@@ -91,7 +91,8 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
 .field label { font-size: .88rem; color: var(--muted); }
 .field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 9px 10px; width: 100%; }
-.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.field input, .field select { min-width: 0; }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
 .shortcuts { display: flex; gap: 8px; margin-top: 2px; }
 .actions .left { margin-right: auto; }
@@ -154,6 +155,33 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
 .piece .corg { color: var(--muted); font-size: .92rem; }
 .selrow { display: flex; gap: 8px; }
 .selrow select { flex: 1; min-width: 0; }
+
+/* ---- Guitares ---- */
+ul#gtrList { list-style: none; margin: 0; padding: 0; }
+.piece.gtr { border-left-color: var(--c-instrument); }
+.badge { display: inline-block; font-size: .75rem; font-weight: 500; border-radius: 999px; padding: 1px 8px; margin-left: 6px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
+.badge.s-encours { border-color: var(--c-instrument); color: var(--c-instrument); }
+.badge.s-terminee { border-color: var(--accent); color: var(--accent); }
+.badge.s-livree { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--paper); }
+.box .total { font-size: .88rem; color: var(--muted); margin-top: 4px; }
+.box .total strong { color: var(--ink); }
+.pc { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.pc:last-of-type { border-bottom: 0; }
+.pc .pcb { flex: 1; min-width: 0; }
+.pc .pcm { color: var(--muted); font-size: .82rem; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.pc .pcm a { color: var(--accent); }
+.picker { max-height: 240px; overflow-y: auto; margin-top: 6px; border-top: 1px solid var(--line); }
+.picker label { display: flex; gap: 8px; align-items: center; padding: 6px 2px; font-size: .9rem; color: var(--ink); border-bottom: 1px solid var(--line); }
+.picker input { width: auto; }
+.picker .none { color: var(--muted); font-size: .88rem; padding: 6px 2px; }
+.hrow { display: grid; grid-template-columns: 1fr 70px; gap: 6px; margin-top: 6px; }
+.hrow input { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 8px; width: 100%; }
+.hrow .wide { grid-column: 1 / -1; display: flex; gap: 6px; }
+.hrow .wide input { flex: 1; min-width: 0; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 4px 0 6px; }
+.thumbs a { position: relative; display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--gone); }
+.thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -171,6 +199,7 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
       <button type="button" data-m="cal">Calendrier</button>
       <button type="button" data-m="inv">Inventaire</button>
       <button type="button" data-m="cli">Clients</button>
+      <button type="button" data-m="gtr">Guitares</button>
     </div>
     <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
 
@@ -226,6 +255,15 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
       <input type="file" id="vcfInput" accept=".vcf,text/vcard,text/x-vcard" multiple hidden>
     </section>
 
+    <section id="gtrView" hidden>
+      <div class="views" id="gtrStatus" aria-label="Statut"></div>
+      <div class="invbar">
+        <input type="search" id="gtrSearch" placeholder="Chercher : numéro, nom, client, bois…" aria-label="Chercher une guitare">
+      </div>
+      <p class="invsum" id="gtrSum"></p>
+      <ul id="gtrList"></ul>
+    </section>
+
     <button class="btn primary" id="add" type="button">Ajouter</button>
   </div>
 
@@ -276,6 +314,61 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
       <button class="btn danger left" type="button" id="del" hidden>Supprimer</button>
       <button class="btn" type="button" id="cancel">Annuler</button>
       <button class="btn primary" type="submit" id="save">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgGtr">
+  <form id="formGtr">
+    <h2 id="gtrTitle">Nouvelle guitare</h2>
+    <div class="field"><label for="g-nom">Nom de la guitare</label><input id="g-nom" required autocomplete="off" placeholder="ex. Dreadnought cèdre et palissandre"></div>
+    <div class="row2">
+      <div class="field"><label for="g-modele">Modèle</label><input id="g-modele" list="dl-modele" autocomplete="off" placeholder="ex. Dreadnought, OM, Classique"></div>
+      <div class="field"><label for="g-statut">Statut</label>
+        <select id="g-statut"><option value="encours">En cours</option><option value="terminee">Terminée</option><option value="livree">Livrée</option></select></div>
+    </div>
+    <datalist id="dl-modele"></datalist>
+    <div class="field"><label for="g-client">Client</label>
+      <div class="selrow"><select id="g-client"></select><button class="btn small" type="button" id="g-newClient">Nouveau client</button></div></div>
+    <div class="row2">
+      <div class="field"><label for="g-debut">Début</label><input id="g-debut" type="date"></div>
+      <div class="field"><label for="g-fin">Fin</label><input id="g-fin" type="date"></div>
+    </div>
+
+    <div class="field"><label>Pièces d’inventaire utilisées et leurs factures</label>
+      <div class="box">
+        <div id="gPieces"></div>
+        <div class="total" id="gPiecesTotal"></div>
+        <button class="btn small" type="button" id="gPickToggle" style="margin-top:6px">Ajouter des pièces</button>
+        <div id="gPicker" hidden>
+          <input type="search" id="gPickSearch" placeholder="Filtrer : PT, ébène, étagère…" aria-label="Filtrer les pièces" style="margin-top:6px">
+          <div class="picker" id="gPickList"></div>
+        </div>
+      </div></div>
+
+    <div class="field"><label>Heures travaillées</label>
+      <div class="box">
+        <div id="gHours"></div>
+        <div class="total" id="gHoursTotal"></div>
+        <div class="hrow">
+          <input id="gh-date" type="date" aria-label="Date">
+          <input id="gh-h" type="number" step="0.25" min="0" inputmode="decimal" placeholder="h" aria-label="Heures">
+          <div class="wide"><input id="gh-note" placeholder="Travail fait (optionnel)" aria-label="Travail fait"><button class="btn small" type="button" id="gh-add">Ajouter</button></div>
+        </div>
+      </div></div>
+
+    <div class="field">
+      <label for="g-files">Photos et documents</label>
+      <div class="thumbs" id="gThumbs"></div>
+      <ul class="doclist" id="gDocList"></ul>
+      <input id="g-files" type="file" accept="image/*,application/pdf" multiple>
+      <span class="docnote">Les fichiers vont dans Drive : Guitares / <span id="g-folderName">…</span>. <a id="gtrFolderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
+    </div>
+    <div class="field"><label for="g-notes">Notes</label><textarea id="g-notes" rows="3"></textarea></div>
+    <div class="actions">
+      <button class="btn danger left" type="button" id="gtrDel" hidden>Supprimer</button>
+      <button class="btn" type="button" id="gtrCancel">Annuler</button>
+      <button class="btn primary" type="submit" id="gtrSave">Enregistrer</button>
     </div>
   </form>
 </dialog>
@@ -374,6 +467,11 @@ const PIECES = { T: 'Touche', PT: 'Plaque de tête', TH: 'Table d’harmonie', D
 const CLI_SHEET = 'Clients';
 const CLI_FOLDER = 'Clients';
 const CLI_HEADERS = ['numero','prenom','nom','entreprise','telephone','courriel','adresse','notes','documents','dossier_id','date_ajout'];
+// Guitares fabriquées
+const GTR_SHEET = 'Guitares';
+const GTR_FOLDER = 'Guitares';
+const GTR_HEADERS = ['numero','nom','modele','client','statut','date_debut','date_fin','pieces','heures','notes','photos','dossier_id','date_ajout'];
+const GTR_STATUS = { encours: 'En cours', terminee: 'Terminée', livree: 'Livrée' };
 const WOODS = ['Ébène', 'Palissandre', 'Wengé', 'Cèdre rouge', 'Épinette', 'Érable', 'Acajou', 'Noyer', 'Koa', 'Cerisier'];
 
 /* ============ État ============ */
@@ -382,8 +480,13 @@ let sheetId = localStorage.getItem('sheetId') || '';
 let folderId = localStorage.getItem('folderId') || '';
 const gids = {};
 let tasks = [], cat = 'all', view = 'all', showDone = false;
-let mode = ['cal', 'inv', 'cli'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
-let clients = [], cliQuery = '', cliEditing = null, cliDocs = [], cliPending = [], cliFromTask = false;
+let mode = ['cal', 'inv', 'cli', 'gtr'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
+let clients = [], cliQuery = '', cliEditing = null, cliDocs = [], cliPending = [];
+let cliReturn = null; // liste déroulante à remplir après « Nouveau client » (tâche ou guitare)
+let guitars = [], gtrFilter = 'all', gtrQuery = '';
+let gtrEditing = null, gPieces = [], gHours = [], gDocs = [], gPending = [];
+let guitarsRoot = localStorage.getItem('guitarsFolder') || '';
+const blobUrls = {};
 let clientsRoot = localStorage.getItem('clientsFolder') || '';
 let inv = [], invType = 'all', invQuery = '', showUsed = false;
 let invEditing = null, invDocs = [], invPending = [];
@@ -408,6 +511,7 @@ const colLetter = i => String.fromCharCode(65 + i);
 const LAST_COL = colLetter(HEADERS.length - 1);
 const INV_LAST = colLetter(INV_HEADERS.length - 1);
 const CLI_LAST = colLetter(CLI_HEADERS.length - 1);
+const GTR_LAST = colLetter(GTR_HEADERS.length - 1);
 const rangeIn = (title, r) => encodeURIComponent(`'${title}'!${r}`);
 const range = r => rangeIn(SHEET_TITLE, r);
 const money = v => Number(v).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
@@ -452,10 +556,12 @@ async function connect() {
     await ensureHeaders();
     await ensureTab(INV_SHEET, INV_HEADERS);
     await ensureTab(CLI_SHEET, CLI_HEADERS);
+    await ensureTab(GTR_SHEET, GTR_HEADERS);
     $('#signedOut').hidden = true; $('#app').hidden = false;
     $('#auth').textContent = 'Déconnexion';
-    await Promise.all([loadClients(), loadInv()]);
+    await Promise.all([loadClients(), loadInv(), loadGuitars()]);
     await load();
+    ensureGuitarsRoot().catch(fail); // crée le dossier Guitares/ la première fois
     ensureInvFolders().catch(fail); // crée Inventaire/ et ses sous-dossiers la première fois
     ensureClientsRoot().catch(fail); // crée le dossier Clients/ la première fois
   } catch (e) { fail(e); }
@@ -537,7 +643,7 @@ async function uploadDoc(file, prefix, parent) {
   const r = await api(`${DRIVE_UP}?uploadType=multipart&fields=id,webViewLink`, {
     method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${b}` }, body
   });
-  return { id: r.id, name, url: r.webViewLink };
+  return { id: r.id, name, url: r.webViewLink, mime: type };
 }
 
 /* ============ Google Sheets (base de données) ============ */
@@ -740,7 +846,17 @@ function buildNav() {
   $('#calView').hidden = mode !== 'cal';
   $('#invView').hidden = mode !== 'inv';
   $('#cliView').hidden = mode !== 'cli';
-  $('#tabs').hidden = mode === 'inv' || mode === 'cli';
+  $('#gtrView').hidden = mode !== 'gtr';
+  $('#tabs').hidden = ['inv', 'cli', 'gtr'].includes(mode);
+
+  const gs = $('#gtrStatus'); gs.textContent = '';
+  [['all', 'Toutes'], ...Object.entries(GTR_STATUS)].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(gtrFilter === k));
+    b.onclick = () => { gtrFilter = k; buildNav(); renderGuitars(); };
+    gs.appendChild(b);
+  });
 
   const it = $('#invTypes'); it.textContent = '';
   [['all', 'Tous'], ...Object.entries(PIECES).map(([k, v]) => [k, `${v} (${k})`])].forEach(([k, label]) => {
@@ -762,6 +878,7 @@ function render() {
   if (mode === 'cal') { renderCalendar(); return; }
   if (mode === 'inv') { renderInv(); return; }
   if (mode === 'cli') { renderClients(); return; }
+  if (mode === 'gtr') { renderGuitars(); return; }
   const list = $('#list'); list.textContent = '';
   const today = ymd(new Date());
   const items = tasks.filter(t => {
@@ -1007,7 +1124,9 @@ function renderInv() {
     if (p.entreposage) add('Entreposage : ' + p.entreposage);
     if (p.date_coupe) add('Coupé le ' + toDate(p.date_coupe).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }));
     if (p.fournisseur) add(p.fournisseur);
-    if (p.utilise === 'oui') add('Utilisée');
+    const g = guitarOfPiece(p.numero);
+    if (g) add('Utilisée dans ' + g.numero + ' · ' + g.nom);
+    else if (p.utilise === 'oui') add('Utilisée');
     if (safeUrl(p.lien_facture)) meta.appendChild(link(p.lien_facture, 'Facture'));
     parseDocs(p.documents).forEach(d => meta.appendChild(link(d.url, d.name || 'Facture')));
     body.appendChild(meta);
@@ -1382,6 +1501,13 @@ function openClient(c = null) {
         b.onclick = () => { $('#dlgCli').close(); openForm(t); };
         wrap.appendChild(b);
       });
+    guitars.filter(g => g.client === c.numero).forEach(g => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'dtask t-instrument';
+      b.textContent = `Guitare ${g.numero} · ${g.nom} · ${GTR_STATUS[g.statut] || ''}`;
+      b.onclick = () => { $('#dlgCli').close(); openGuitar(g); };
+      wrap.appendChild(b);
+    });
     const sc = document.createElement('div'); sc.className = 'shortcuts';
     [['reparation', '+ Réparation'], ['instrument', '+ Instrument']].forEach(([type, label]) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = label;
@@ -1397,7 +1523,7 @@ function openClient(c = null) {
 }
 
 $('#c-files').onchange = e => { cliPending.push(...e.target.files); e.target.value = ''; renderCliDocs(); };
-$('#cliCancel').onclick = () => { cliFromTask = false; $('#dlgCli').close(); };
+$('#cliCancel').onclick = () => { cliReturn = null; $('#dlgCli').close(); };
 $('#cliVcf').onclick = () => cliEditing && downloadVcf([cliEditing], `${cliEditing.numero} ${fullName(cliEditing)}.vcf`);
 $('#cliExport').onclick = () => {
   if (!clients.length) { say('Aucun client à exporter.'); return; }
@@ -1443,10 +1569,329 @@ $('#formCli').onsubmit = async ev => {
     if (cliEditing) await updateClient(c); else await addClients([c]);
     $('#dlgCli').close();
     await loadClients();
-    if (cliFromTask) { fillClientSelect(c.numero); cliFromTask = false; }
+    if (cliReturn) { fillClientSelect(c.numero, cliReturn); cliReturn = null; }
     else render();
   } catch (e) { fail(e); }
   $('#cliSave').disabled = false;
+};
+
+/* ============ Guitares : données (onglet « Guitares ») ============ */
+const piecesOf = g => (g.pieces || '').split(',').map(s => s.trim()).filter(Boolean);
+const guitarOfPiece = num => guitars.find(g => piecesOf(g).includes(num));
+const findPiece = num => inv.find(p => p.numero === num);
+const parseHours = s => { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a.filter(x => x && Number(x.h) > 0) : []; } catch { return []; } };
+const sumHours = a => a.reduce((s, x) => s + Number(x.h || 0), 0);
+const fmtH = h => Number(h).toLocaleString('fr-CA', { maximumFractionDigits: 2 }) + ' h';
+const isImage = d => /^image\//.test(d.mime || '') || /\.(jpe?g|png|gif|webp|heic)$/i.test(d.name || '');
+const pieceLabel = p => `${p.numero} · ${PIECES[p.type] || p.type} · ${p.bois}`;
+
+async function loadGuitars() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(GTR_SHEET, `A2:${GTR_LAST}`)}`);
+  guitars = (d.values || []).map(row => {
+    const o = {};
+    GTR_HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
+    return o;
+  }).filter(g => g.numero);
+  if (mode === 'gtr') renderGuitars();
+}
+
+function nextGuitarNumber() {
+  const max = guitars.reduce((m, g) => { const x = /^G(\d+)$/.exec(g.numero); return x ? Math.max(m, Number(x[1])) : m; }, 0);
+  return 'G' + String(max + 1).padStart(3, '0');
+}
+
+const gtrRow = g => GTR_HEADERS.map(h => g[h] ?? '');
+
+async function addGuitar(g) {
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(GTR_SHEET, `A:${GTR_LAST}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: [gtrRow(g)] })
+  });
+}
+
+async function updateGuitar(g) {
+  const r = await findRow(g.numero, GTR_SHEET);
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(GTR_SHEET, `A${r}:${GTR_LAST}${r}`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [gtrRow(g)] })
+  });
+}
+
+// Marque des pièces d’inventaire comme utilisées (« oui ») ou de retour en stock (« »), en un seul appel.
+async function setPiecesUsed(nums, val) {
+  if (!nums.length) return;
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, 'A:A')}`);
+  const col = colLetter(INV_HEADERS.indexOf('utilise'));
+  const ids = (d.values || []).map(r => r[0]);
+  const data = nums.map(n => ids.indexOf(n)).filter(i => i > 0)
+    .map(i => ({ range: `'${INV_SHEET}'!${col}${i + 1}`, values: [[val]] }));
+  if (!data.length) return;
+  await api(`${SHEETS}/${sheetId}/values:batchUpdate`, {
+    method: 'POST', body: JSON.stringify({ valueInputOption: 'RAW', data })
+  });
+}
+
+async function ensureGuitarsRoot() {
+  if (!guitarsRoot) {
+    guitarsRoot = await driveFolder(GTR_FOLDER);
+    localStorage.setItem('guitarsFolder', guitarsRoot);
+  }
+  return guitarsRoot;
+}
+
+// Un sous-dossier par guitare, créé au premier fichier : « G001 - Nom »
+async function ensureGuitarFolder(g) {
+  if (!g.dossier_id) g.dossier_id = await driveFolder(`${g.numero} - ${g.nom}`, await ensureGuitarsRoot());
+  return g.dossier_id;
+}
+
+// Télécharge une image de Drive (avec le jeton) pour l’afficher en vignette.
+async function driveBlobUrl(id) {
+  if (blobUrls[id]) return blobUrls[id];
+  const t = await getToken();
+  const r = await fetch(`${DRIVE}/${encodeURIComponent(id)}?alt=media`, { headers: { Authorization: 'Bearer ' + t } });
+  if (!r.ok) throw new Error(r.status);
+  return (blobUrls[id] = URL.createObjectURL(await r.blob()));
+}
+
+/* ============ Guitares : affichage ============ */
+function renderGuitars() {
+  const list = $('#gtrList'); list.textContent = '';
+  const q = gtrQuery.trim().toLowerCase();
+  const items = guitars.filter(g => {
+    if (gtrFilter !== 'all' && g.statut !== gtrFilter) return false;
+    if (!q) return true;
+    const woods = piecesOf(g).map(n => { const p = findPiece(n); return p ? p.bois : ''; });
+    return [g.numero, g.nom, g.modele, g.notes, g.client ? clientName(g.client) : '', ...piecesOf(g), ...woods].join(' ').toLowerCase().includes(q);
+  }).sort((a, b) => b.numero.localeCompare(a.numero, 'fr', { numeric: true }));
+
+  const enCours = guitars.filter(g => g.statut === 'encours').length;
+  const hrs = guitars.reduce((s, g) => s + sumHours(parseHours(g.heures)), 0);
+  const sum = $('#gtrSum'); sum.textContent = '';
+  const s1 = document.createElement('strong'); s1.textContent = String(guitars.length);
+  const s2 = document.createElement('strong'); s2.textContent = String(enCours);
+  const s3 = document.createElement('strong'); s3.textContent = fmtH(hrs);
+  sum.append(s1, guitars.length > 1 ? ' guitares · ' : ' guitare · ', s2, ' en cours · ', s3, ' au total');
+
+  if (!items.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.innerHTML = guitars.length ? '<p>Aucune guitare ne correspond.</p>' : '<p>Aucune guitare. Touche « Ajouter » pour commencer une fabrication.</p>';
+    list.appendChild(li); return;
+  }
+
+  items.forEach(g => {
+    const li = document.createElement('li'); li.className = 'piece gtr';
+    const body = document.createElement('div'); body.className = 'body';
+    body.onclick = () => openGuitar(g);
+    const head = document.createElement('div');
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = g.numero;
+    const nm = document.createElement('span'); nm.className = 'kind'; nm.textContent = g.nom;
+    const bd = document.createElement('span'); bd.className = 'badge s-' + g.statut; bd.textContent = GTR_STATUS[g.statut] || g.statut;
+    head.append(num, nm, bd); body.appendChild(head);
+    const sub = [g.modele, g.client ? clientName(g.client) : ''].filter(Boolean).join(' · ');
+    if (sub) { const w = document.createElement('div'); w.className = 'wood'; w.textContent = sub; body.appendChild(w); }
+
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); };
+    const h = sumHours(parseHours(g.heures)); if (h) add(fmtH(h));
+    const ps = piecesOf(g);
+    if (ps.length) {
+      const cost = ps.reduce((s, n) => s + (Number((findPiece(n) || {}).prix) || 0), 0);
+      add(`${ps.length} pièce${ps.length > 1 ? 's' : ''}` + (cost ? ' · ' + money(cost) : ''));
+    }
+    if (g.date_debut) add('Début ' + fmtDate(g.date_debut));
+    if (g.date_fin) add('Fin ' + fmtDate(g.date_fin));
+    const ph = parseDocs(g.photos).filter(isImage).length; if (ph) add(`${ph} photo${ph > 1 ? 's' : ''}`);
+    body.appendChild(meta);
+
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'btn small'; edit.textContent = 'Ouvrir';
+    edit.setAttribute('aria-label', 'Ouvrir ' + g.numero);
+    edit.onclick = () => openGuitar(g);
+    li.append(body, edit);
+    list.appendChild(li);
+  });
+}
+
+/* ============ Guitares : fiche ============ */
+function renderGPieces() {
+  const box = $('#gPieces'); box.textContent = '';
+  let cost = 0;
+  if (!gPieces.length) { const n = document.createElement('div'); n.className = 'none docnote'; n.textContent = 'Aucune pièce choisie.'; box.appendChild(n); }
+  gPieces.forEach((num, i) => {
+    const p = findPiece(num);
+    const row = document.createElement('div'); row.className = 'pc';
+    const b = document.createElement('div'); b.className = 'pcb';
+    const t = document.createElement('div'); t.textContent = p ? pieceLabel(p) : num + ' (retirée de l’inventaire)';
+    const m = document.createElement('div'); m.className = 'pcm';
+    if (p) {
+      cost += Number(p.prix) || 0;
+      if (p.prix) { const s = document.createElement('span'); s.textContent = money(p.prix); m.appendChild(s); }
+      if (p.fournisseur) { const s = document.createElement('span'); s.textContent = p.fournisseur; m.appendChild(s); }
+      const invs = [...(safeUrl(p.lien_facture) ? [{ url: p.lien_facture, name: 'Facture' }] : []), ...parseDocs(p.documents)];
+      if (invs.length) invs.forEach(d => m.appendChild(link(d.url, d.name || 'Facture')));
+      else { const s = document.createElement('span'); s.textContent = 'aucune facture'; m.appendChild(s); }
+    }
+    b.append(t, m);
+    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer';
+    rm.onclick = () => { gPieces.splice(i, 1); renderGPieces(); renderGPicker(); };
+    row.append(b, rm); box.appendChild(row);
+  });
+  $('#gPiecesTotal').textContent = gPieces.length ? `Coût des pièces : ${money(cost)}` : '';
+}
+
+function renderGPicker() {
+  const list = $('#gPickList'); list.textContent = '';
+  const q = $('#gPickSearch').value.trim().toLowerCase();
+  const own = gtrEditing ? gtrEditing.numero : '';
+  const order = Object.keys(PIECES);
+  const avail = inv.filter(p => {
+    if (gPieces.includes(p.numero)) return false;
+    const g = guitarOfPiece(p.numero);
+    if (g && g.numero !== own) return false;
+    if (p.utilise === 'oui' && !(g && g.numero === own)) return false;
+    return !q || [p.numero, PIECES[p.type], p.bois, p.entreposage, p.fournisseur].join(' ').toLowerCase().includes(q);
+  }).sort((a, b) => (order.indexOf(a.type) - order.indexOf(b.type)) || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));
+  if (!avail.length) { const n = document.createElement('div'); n.className = 'none'; n.textContent = 'Aucune pièce disponible en stock.'; list.appendChild(n); return; }
+  avail.forEach(p => {
+    const l = document.createElement('label');
+    const cb = document.createElement('input'); cb.type = 'checkbox';
+    cb.onchange = () => { gPieces.push(p.numero); renderGPieces(); renderGPicker(); };
+    const s = document.createElement('span');
+    s.textContent = pieceLabel(p) + (p.prix ? ' · ' + money(p.prix) : '') + (p.entreposage ? ' · ' + p.entreposage : '');
+    l.append(cb, s); list.appendChild(l);
+  });
+}
+
+function renderGHours() {
+  const box = $('#gHours'); box.textContent = '';
+  gHours.sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  gHours.forEach((x, i) => {
+    const row = document.createElement('div'); row.className = 'pc';
+    const b = document.createElement('div'); b.className = 'pcb';
+    b.textContent = `${x.d ? fmtDate(x.d) : 'Sans date'} · ${fmtH(x.h)}${x.n ? ' · ' + x.n : ''}`;
+    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer';
+    rm.onclick = () => { gHours.splice(i, 1); renderGHours(); };
+    row.append(b, rm); box.appendChild(row);
+  });
+  const tot = sumHours(gHours);
+  $('#gHoursTotal').textContent = gHours.length ? `Total : ${fmtH(tot)} sur ${gHours.length} séance${gHours.length > 1 ? 's' : ''}` : 'Aucune heure inscrite.';
+}
+
+function renderGDocs() {
+  const th = $('#gThumbs'); th.textContent = '';
+  const ul = $('#gDocList'); ul.textContent = '';
+  gDocs.forEach((d, i) => {
+    if (isImage(d)) {
+      const a = link(d.url, ''); a.setAttribute('aria-label', d.name || 'Photo');
+      const img = document.createElement('img'); img.alt = d.name || 'Photo'; img.loading = 'lazy';
+      a.appendChild(img); th.appendChild(a);
+      driveBlobUrl(d.id).then(u => { img.src = u; }).catch(() => { img.remove(); a.textContent = d.name; });
+    }
+    const li = document.createElement('li');
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer';
+    rm.onclick = () => { gDocs.splice(i, 1); renderGDocs(); };
+    li.append(link(d.url, d.name || 'Document'), rm); ul.appendChild(li);
+  });
+  gPending.forEach((f, i) => {
+    const li = document.createElement('li');
+    const s = document.createElement('span'); s.className = 'pending'; s.textContent = f.name + ' (à téléverser)';
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer';
+    rm.onclick = () => { gPending.splice(i, 1); renderGDocs(); };
+    li.append(s, rm); ul.appendChild(li);
+  });
+}
+
+function openGuitar(g = null) {
+  gtrEditing = g;
+  $('#formGtr').reset();
+  $('#gtrTitle').textContent = g ? `Guitare ${g.numero}` : `Nouvelle guitare (${nextGuitarNumber()})`;
+  $('#gtrDel').hidden = !g;
+  fillDatalist('#dl-modele', ['Dreadnought', 'OM', 'Parlor', 'Jumbo', 'Classique', 'Électrique', ...guitars.map(x => x.modele)]);
+  fillClientSelect(g ? g.client : '', '#g-client');
+  if (g) {
+    $('#g-nom').value = g.nom; $('#g-modele').value = g.modele; $('#g-statut').value = g.statut || 'encours';
+    $('#g-debut').value = g.date_debut; $('#g-fin').value = g.date_fin; $('#g-notes').value = g.notes;
+  } else {
+    $('#g-debut').value = ymd(new Date());
+  }
+  $('#gh-date').value = ymd(new Date());
+  gPieces = g ? piecesOf(g) : [];
+  gHours = parseHours(g && g.heures);
+  gDocs = parseDocs(g && g.photos);
+  gPending = [];
+  $('#gPicker').hidden = true; $('#gPickToggle').textContent = 'Ajouter des pièces';
+  $('#g-folderName').textContent = g ? `${g.numero} - ${g.nom}` : 'nouveau sous-dossier';
+  const fl = $('#gtrFolderLink');
+  fl.hidden = !(g && g.dossier_id);
+  if (g && g.dossier_id) fl.href = 'https://drive.google.com/drive/folders/' + g.dossier_id;
+  renderGPieces(); renderGHours(); renderGDocs();
+  $('#dlgGtr').showModal();
+}
+
+$('#gPickToggle').onclick = () => {
+  const p = $('#gPicker'); p.hidden = !p.hidden;
+  $('#gPickToggle').textContent = p.hidden ? 'Ajouter des pièces' : 'Fermer la liste';
+  if (!p.hidden) { $('#gPickSearch').value = ''; renderGPicker(); }
+};
+$('#gPickSearch').oninput = renderGPicker;
+$('#gh-add').onclick = () => {
+  const h = Number($('#gh-h').value);
+  if (!(h > 0)) { $('#gh-h').focus(); return; }
+  gHours.push({ d: $('#gh-date').value, h, n: $('#gh-note').value.trim() });
+  $('#gh-h').value = ''; $('#gh-note').value = '';
+  renderGHours();
+};
+$('#g-files').onchange = e => { gPending.push(...e.target.files); e.target.value = ''; renderGDocs(); };
+$('#gtrCancel').onclick = () => $('#dlgGtr').close();
+$('#gtrSearch').oninput = e => { gtrQuery = e.target.value; renderGuitars(); };
+
+$('#gtrDel').onclick = async () => {
+  const g = gtrEditing; if (!g) return;
+  if (!confirm(`Supprimer ${g.numero} · ${g.nom} ?\nLes pièces restent marquées « utilisées » dans l’inventaire. Les photos restent dans Drive.`)) return;
+  $('#gtrDel').disabled = true; say();
+  try { await deleteRow(GTR_SHEET, await findRow(g.numero, GTR_SHEET)); $('#dlgGtr').close(); await loadGuitars(); }
+  catch (e) { fail(e); }
+  $('#gtrDel').disabled = false;
+};
+
+$('#formGtr').onsubmit = async ev => {
+  ev.preventDefault();
+  // Heures tapées mais pas encore ajoutées : on les garde
+  if (Number($('#gh-h').value) > 0) $('#gh-add').click();
+  $('#gtrSave').disabled = true; say();
+  try {
+    const before = gtrEditing ? piecesOf(gtrEditing) : [];
+    const g = {
+      ...(gtrEditing || {}),
+      nom: $('#g-nom').value.trim(), modele: $('#g-modele').value.trim(),
+      client: $('#g-client').value, statut: $('#g-statut').value,
+      date_debut: $('#g-debut').value, date_fin: $('#g-fin').value,
+      pieces: gPieces.join(', '), heures: gHours.length ? JSON.stringify(gHours) : '',
+      notes: $('#g-notes').value.trim()
+    };
+    if (!gtrEditing) {
+      await loadGuitars();
+      g.numero = nextGuitarNumber(); g.date_ajout = ymd(new Date()); g.dossier_id = '';
+    }
+    if (gPending.length) {
+      const parent = await ensureGuitarFolder(g);
+      for (let i = 0; i < gPending.length; i++) {
+        say(`Téléversement ${i + 1} / ${gPending.length}…`, true);
+        gDocs.push(await uploadDoc(gPending[i], `${g.numero} - ${g.nom}`, parent));
+      }
+      gPending = []; renderGDocs(); say();
+    }
+    g.photos = gDocs.length ? JSON.stringify(gDocs) : '';
+    if (gtrEditing) await updateGuitar(g); else await addGuitar(g);
+    // Inventaire : pièces ajoutées → utilisées ; pièces retirées → de retour en stock
+    await setPiecesUsed(gPieces.filter(n => !before.includes(n)), 'oui');
+    await setPiecesUsed(before.filter(n => !gPieces.includes(n)), '');
+    $('#dlgGtr').close();
+    await Promise.all([loadGuitars(), loadInv()]);
+    if (!gtrEditing) say(`Guitare ${g.numero} créée.`, true);
+  } catch (e) { fail(e); }
+  $('#gtrSave').disabled = false;
 };
 
 /* ============ Formulaire ============ */
@@ -1457,8 +1902,8 @@ function syncFormFields() {
   $('#w-client').hidden = !CLIENT_TYPES.includes(type);
 }
 
-function fillClientSelect(selected = '') {
-  const sel = $('#f-client'); sel.textContent = '';
+function fillClientSelect(selected = '', selId = '#f-client') {
+  const sel = $(selId); sel.textContent = '';
   sel.add(new Option('— Aucun —', ''));
   [...clients].sort((a, b) => fullName(a).localeCompare(fullName(b), 'fr'))
     .forEach(c => sel.add(new Option(fullName(c) + (c.telephone ? ' · ' + c.telephone : ''), c.numero)));
@@ -1513,8 +1958,9 @@ function openFormFor(type, client) {
 
 $('#f-type').onchange = syncFormFields;
 $('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
-$('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : openForm());
-$('#f-newClient').onclick = () => { cliFromTask = true; openClient(); };
+$('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : mode === 'gtr' ? openGuitar() : openForm());
+$('#f-newClient').onclick = () => { cliReturn = '#f-client'; openClient(); };
+$('#g-newClient').onclick = () => { cliReturn = '#g-client'; openClient(); };
 $('#cancel').onclick = () => $('#dlg').close();
 
 $('#del').onclick = async () => {
