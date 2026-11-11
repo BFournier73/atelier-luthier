@@ -50,8 +50,9 @@ button { cursor: pointer; }
 .btn.small { padding: 4px 10px; font-size: .85rem; }
 .btn:disabled { opacity: .6; cursor: progress; }
 
-.seg { display: inline-flex; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px; margin: 4px 0 8px; }
-.seg button { border: 0; background: transparent; padding: 6px 18px; border-radius: 999px; font-weight: 500; color: var(--muted); }
+.seg { display: inline-flex; max-width: 100%; overflow-x: auto; scrollbar-width: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px; margin: 4px 0 8px; }
+.seg::-webkit-scrollbar { display: none; }
+.seg button { flex: none; border: 0; background: transparent; padding: 6px 13px; border-radius: 999px; font-weight: 500; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 
 .tabs, .views { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0; scrollbar-width: none; }
@@ -91,7 +92,8 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .field label { font-size: .88rem; color: var(--muted); }
 .field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 9px 10px; width: 100%; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.shortcuts { display: flex; gap: 8px; margin-top: 2px; }
 .actions .left { margin-right: auto; }
 .check { flex-direction: row; align-items: center; gap: 8px; }
 .check input { width: auto; }
@@ -132,7 +134,7 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .invbar input[type=search] { flex: 1; min-width: 180px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; }
 .invsum { color: var(--muted); margin: 2px 0 10px; font-size: .92rem; }
 .invsum strong { color: var(--ink); }
-ul#invList { list-style: none; margin: 0; padding: 0; }
+ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
 .piece { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
 .piece .body { flex: 1; min-width: 0; cursor: pointer; }
 .piece .num { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
@@ -143,6 +145,15 @@ ul#invList { list-style: none; margin: 0; padding: 0; }
 .piece.used { opacity: .6; }
 .piece.used .num { text-decoration: line-through; }
 .numprev { font-weight: 700; font-size: 1.1rem; }
+
+/* ---- Clients ---- */
+.clibtns { display: flex; gap: 8px; }
+.piece.client { border-left-color: var(--c-reparation); }
+.piece .cname { font-weight: 700; overflow-wrap: anywhere; }
+.piece .cnum { color: var(--muted); font-size: .82rem; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.piece .corg { color: var(--muted); font-size: .92rem; }
+.selrow { display: flex; gap: 8px; }
+.selrow select { flex: 1; min-width: 0; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -159,6 +170,7 @@ ul#invList { list-style: none; margin: 0; padding: 0; }
       <button type="button" data-m="list">Liste</button>
       <button type="button" data-m="cal">Calendrier</button>
       <button type="button" data-m="inv">Inventaire</button>
+      <button type="button" data-m="cli">Clients</button>
     </div>
     <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
 
@@ -199,6 +211,21 @@ ul#invList { list-style: none; margin: 0; padding: 0; }
       <ul id="invList"></ul>
     </section>
 
+    <section id="cliView" hidden>
+      <div class="invbar">
+        <input type="search" id="cliSearch" placeholder="Chercher : nom, téléphone, courriel…" aria-label="Chercher un client">
+      </div>
+      <div class="opts">
+        <span id="cliSum"></span>
+        <span class="clibtns">
+          <button class="btn small" id="cliImport" type="button">Importer de l’iPhone</button>
+          <button class="btn small" id="cliExport" type="button">Exporter tout</button>
+        </span>
+      </div>
+      <ul id="cliList" class="plain"></ul>
+      <input type="file" id="vcfInput" accept=".vcf,text/vcard,text/x-vcard" multiple hidden>
+    </section>
+
     <button class="btn primary" id="add" type="button">Ajouter</button>
   </div>
 
@@ -231,6 +258,8 @@ ul#invList { list-style: none; margin: 0; padding: 0; }
           <option value="mensuelle">Mensuelle</option>
         </select></div>
     </div>
+    <div class="field" id="w-client" hidden><label for="f-client">Client</label>
+      <div class="selrow"><select id="f-client"></select><button class="btn small" type="button" id="f-newClient">Nouveau client</button></div></div>
     <div class="field" id="w-instrument" hidden><label for="f-instrument">Instrument</label><input id="f-instrument"></div>
     <div class="row2" id="w-cout">
       <div class="field"><label for="f-cout">Coût ($)</label><input id="f-cout" type="number" step="0.01" inputmode="decimal"></div>
@@ -247,6 +276,36 @@ ul#invList { list-style: none; margin: 0; padding: 0; }
       <button class="btn danger left" type="button" id="del" hidden>Supprimer</button>
       <button class="btn" type="button" id="cancel">Annuler</button>
       <button class="btn primary" type="submit" id="save">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgCli">
+  <form id="formCli">
+    <h2 id="cliTitle">Nouveau client</h2>
+    <div class="row2">
+      <div class="field"><label for="c-prenom">Prénom</label><input id="c-prenom" autocomplete="off"></div>
+      <div class="field"><label for="c-nom">Nom</label><input id="c-nom" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="c-org">Entreprise / orchestre / école</label><input id="c-org" autocomplete="off"></div>
+    <div class="row2">
+      <div class="field"><label for="c-tel">Téléphone</label><input id="c-tel" type="tel" inputmode="tel" autocomplete="off"></div>
+      <div class="field"><label for="c-mail">Courriel</label><input id="c-mail" type="email" inputmode="email" autocomplete="off"></div>
+    </div>
+    <div class="field"><label for="c-adr">Adresse</label><textarea id="c-adr" rows="2"></textarea></div>
+    <div class="field">
+      <label for="c-files">Documents du client (photos, PDF, soumissions)</label>
+      <ul class="doclist" id="cliDocList"></ul>
+      <input id="c-files" type="file" accept="image/*,application/pdf" multiple>
+      <span class="docnote">Les fichiers vont dans Drive : Clients / <span id="c-folderName">…</span>. <a id="cliFolderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
+    </div>
+    <div class="field"><label for="c-notes">Notes</label><textarea id="c-notes" rows="2"></textarea></div>
+    <div class="field" id="cliTasksWrap" hidden><label>Tâches liées</label><div class="dtasks" id="cliTasks"></div></div>
+    <div class="actions">
+      <button class="btn danger left" type="button" id="cliDel" hidden>Supprimer</button>
+      <button class="btn" type="button" id="cliVcf" hidden>Vers l’iPhone</button>
+      <button class="btn" type="button" id="cliCancel">Annuler</button>
+      <button class="btn primary" type="submit" id="cliSave">Enregistrer</button>
     </div>
   </form>
 </dialog>
@@ -298,7 +357,8 @@ const SCOPES = [
 const SPREADSHEET_NAME = 'App Tâches';
 const SHEET_TITLE = 'Tâches';
 const FOLDER_NAME = 'Factures + Documents';
-const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents'];
+const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client'];
+const CLIENT_TYPES = ['reparation', 'instrument']; // catégories où l’on choisit un client
 const TYPES = { globale: 'Globales', instrument: 'Instruments', perso: 'Perso', reparation: 'Réparation' };
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
@@ -310,6 +370,10 @@ const INV_SHEET = 'Inventaire';
 const INV_FOLDER = 'Inventaire';
 const INV_HEADERS = ['numero','type','bois','prix','entreposage','date_coupe','fournisseur','lien_facture','documents','notes','utilise','date_ajout'];
 const PIECES = { T: 'Touche', PT: 'Plaque de tête', TH: 'Table d’harmonie', DE: 'Dos Éclisses', M: 'Manche', B: 'Beam' };
+// Clients
+const CLI_SHEET = 'Clients';
+const CLI_FOLDER = 'Clients';
+const CLI_HEADERS = ['numero','prenom','nom','entreprise','telephone','courriel','adresse','notes','documents','dossier_id','date_ajout'];
 const WOODS = ['Ébène', 'Palissandre', 'Wengé', 'Cèdre rouge', 'Épinette', 'Érable', 'Acajou', 'Noyer', 'Koa', 'Cerisier'];
 
 /* ============ État ============ */
@@ -318,7 +382,9 @@ let sheetId = localStorage.getItem('sheetId') || '';
 let folderId = localStorage.getItem('folderId') || '';
 const gids = {};
 let tasks = [], cat = 'all', view = 'all', showDone = false;
-let mode = ['cal', 'inv'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
+let mode = ['cal', 'inv', 'cli'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
+let clients = [], cliQuery = '', cliEditing = null, cliDocs = [], cliPending = [], cliFromTask = false;
+let clientsRoot = localStorage.getItem('clientsFolder') || '';
 let inv = [], invType = 'all', invQuery = '', showUsed = false;
 let invEditing = null, invDocs = [], invPending = [];
 let invFolders = (() => { try { return JSON.parse(localStorage.getItem('invFolders') || '{}'); } catch { return {}; } })();
@@ -341,6 +407,7 @@ const fmtDur = min => { min = Math.round(min); const h = Math.floor(min / 60), r
 const colLetter = i => String.fromCharCode(65 + i);
 const LAST_COL = colLetter(HEADERS.length - 1);
 const INV_LAST = colLetter(INV_HEADERS.length - 1);
+const CLI_LAST = colLetter(CLI_HEADERS.length - 1);
 const rangeIn = (title, r) => encodeURIComponent(`'${title}'!${r}`);
 const range = r => rangeIn(SHEET_TITLE, r);
 const money = v => Number(v).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
@@ -383,11 +450,14 @@ async function connect() {
     await getToken();
     await ensureSheet();
     await ensureHeaders();
-    await ensureInvSheet();
+    await ensureTab(INV_SHEET, INV_HEADERS);
+    await ensureTab(CLI_SHEET, CLI_HEADERS);
     $('#signedOut').hidden = true; $('#app').hidden = false;
     $('#auth').textContent = 'Déconnexion';
-    await Promise.all([load(), loadInv()]);
+    await Promise.all([loadClients(), loadInv()]);
+    await load();
     ensureInvFolders().catch(fail); // crée Inventaire/ et ses sous-dossiers la première fois
+    ensureClientsRoot().catch(fail); // crée le dossier Clients/ la première fois
   } catch (e) { fail(e); }
 }
 
@@ -523,18 +593,20 @@ async function findRow(id, title = SHEET_TITLE) {
 }
 
 /* ============ Inventaire (onglet « Inventaire » du même classeur) ============ */
-async function ensureInvSheet() {
+// Crée un onglet du classeur s’il n’existe pas et met ses en-têtes à jour.
+async function ensureTab(title, headers) {
+  const last = colLetter(headers.length - 1);
   await readGids();
-  if (gids[INV_SHEET] === undefined) {
+  if (gids[title] === undefined) {
     const r = await api(`${SHEETS}/${sheetId}:batchUpdate`, {
-      method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: INV_SHEET } } }] })
+      method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title } } }] })
     });
-    gids[INV_SHEET] = r.replies[0].addSheet.properties.sheetId;
+    gids[title] = r.replies[0].addSheet.properties.sheetId;
   }
-  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A1:${INV_LAST}1`)}`);
-  if (((d.values && d.values[0]) || []).length < INV_HEADERS.length) {
-    await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A1:${INV_LAST}1`)}?valueInputOption=RAW`, {
-      method: 'PUT', body: JSON.stringify({ values: [INV_HEADERS] })
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(title, `A1:${last}1`)}`);
+  if (((d.values && d.values[0]) || []).length < headers.length) {
+    await api(`${SHEETS}/${sheetId}/values/${rangeIn(title, `A1:${last}1`)}?valueInputOption=RAW`, {
+      method: 'PUT', body: JSON.stringify({ values: [headers] })
     });
   }
 }
@@ -617,7 +689,7 @@ function eventBody(o) {
   const docs = parseDocs(o.documents).map(d => d.url);
   const body = {
     summary: `[${TYPES[o.type]}] ${o.titre}`,
-    description: [o.description, o.lien, ...docs].filter(Boolean).join('\n'),
+    description: [clientLine(o.client), o.description, o.lien, ...docs].filter(Boolean).join('\n'),
     start: { date: o.echeance },
     end: { date: addDays(o.echeance, 1) }
   };
@@ -667,7 +739,8 @@ function buildNav() {
   $('#listView').hidden = mode !== 'list';
   $('#calView').hidden = mode !== 'cal';
   $('#invView').hidden = mode !== 'inv';
-  $('#tabs').hidden = mode === 'inv';
+  $('#cliView').hidden = mode !== 'cli';
+  $('#tabs').hidden = mode === 'inv' || mode === 'cli';
 
   const it = $('#invTypes'); it.textContent = '';
   [['all', 'Tous'], ...Object.entries(PIECES).map(([k, v]) => [k, `${v} (${k})`])].forEach(([k, label]) => {
@@ -688,6 +761,7 @@ function link(href, text) {
 function render() {
   if (mode === 'cal') { renderCalendar(); return; }
   if (mode === 'inv') { renderInv(); return; }
+  if (mode === 'cli') { renderClients(); return; }
   const list = $('#list'); list.textContent = '';
   const today = ymd(new Date());
   const items = tasks.filter(t => {
@@ -725,6 +799,7 @@ function render() {
     const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); return s; };
     if (t.echeance) add(fmtDate(t.echeance)).classList.add('due');
     if (t.recurrence) add('↻ ' + t.recurrence);
+    if (t.client) add('Client : ' + clientName(t.client));
     if (t.instrument) add(t.instrument);
     if (t.cout) add(Number(t.cout).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }));
     if (safeUrl(t.lien)) meta.appendChild(link(t.lien, 'Lien'));
@@ -1049,11 +1124,346 @@ $('#invSearch').oninput = e => { invQuery = e.target.value; renderInv(); };
 $('#showUsed').onchange = e => { showUsed = e.target.checked; renderInv(); };
 $('#invReload').onclick = () => loadInv().catch(fail);
 
+/* ============ Clients : données (onglet « Clients ») ============ */
+const fullName = c => [c.prenom, c.nom].filter(Boolean).join(' ') || c.entreprise || c.numero;
+const findClient = id => clients.find(c => c.numero === id);
+const clientName = id => { const c = findClient(id); return c ? fullName(c) : '(client supprimé)'; };
+const clientLine = id => { const c = id && findClient(id); return c ? 'Client : ' + [fullName(c), c.telephone, c.courriel].filter(Boolean).join(' · ') : ''; };
+const digits = s => (s || '').replace(/\D/g, '').slice(-10);
+
+async function loadClients() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(CLI_SHEET, `A2:${CLI_LAST}`)}`);
+  clients = (d.values || []).map(row => {
+    const o = {};
+    CLI_HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
+    return o;
+  }).filter(c => c.numero);
+  if (mode === 'cli') renderClients();
+}
+
+function nextClientNumbers(n) {
+  const max = clients.reduce((m, c) => { const x = /^CL(\d+)$/.exec(c.numero); return x ? Math.max(m, Number(x[1])) : m; }, 0);
+  return Array.from({ length: n }, (_, i) => 'CL' + String(max + 1 + i).padStart(3, '0'));
+}
+
+const cliRow = c => CLI_HEADERS.map(h => c[h] ?? '');
+
+async function addClients(list) {
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(CLI_SHEET, `A:${CLI_LAST}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: list.map(cliRow) })
+  });
+}
+
+async function updateClient(c) {
+  const r = await findRow(c.numero, CLI_SHEET);
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(CLI_SHEET, `A${r}:${CLI_LAST}${r}`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [cliRow(c)] })
+  });
+}
+
+async function ensureClientsRoot() {
+  if (!clientsRoot) {
+    clientsRoot = await driveFolder(CLI_FOLDER);
+    localStorage.setItem('clientsFolder', clientsRoot);
+  }
+  return clientsRoot;
+}
+
+// Un sous-dossier par client, créé au premier document : « CL001 - Prénom Nom »
+async function ensureClientFolder(c) {
+  if (!c.dossier_id) c.dossier_id = await driveFolder(`${c.numero} - ${fullName(c)}`, await ensureClientsRoot());
+  return c.dossier_id;
+}
+
+/* ============ Clients : vCard (import / export iPhone) ============ */
+function splitEsc(s, sep) { // découpe sur « ; » ou « , » non précédés de « \ »
+  const out = []; let cur = '';
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && i + 1 < s.length) { cur += s[i] + s[i + 1]; i++; }
+    else if (s[i] === sep) { out.push(cur); cur = ''; }
+    else cur += s[i];
+  }
+  out.push(cur); return out;
+}
+const vUnesc = s => (s || '').replace(/\\n/gi, '\n').replace(/\\([,;:\\])/g, '$1').trim();
+function qpDecode(s) {
+  const bytes = [];
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '=' && /^[0-9A-F]{2}$/i.test(s.substr(i + 1, 2))) { bytes.push(parseInt(s.substr(i + 1, 2), 16)); i += 2; }
+    else bytes.push(s.charCodeAt(i) & 0xff);
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+
+function parseVcf(text) {
+  const lines = text.replace(/\r\n?/g, '\n').replace(/=\n/g, '').replace(/\n[ \t]/g, '').split('\n');
+  const out = []; let cur = null;
+  for (const line of lines) {
+    const i = line.indexOf(':'); if (i < 0) continue;
+    const left = line.slice(0, i).split(';'), val0 = line.slice(i + 1);
+    const prop = left[0].replace(/^item\d+\./i, '').toUpperCase();
+    const params = left.slice(1).join(';').toUpperCase();
+    const val = params.includes('QUOTED-PRINTABLE') ? qpDecode(val0) : val0;
+    if (prop === 'BEGIN' && /VCARD/i.test(val)) { cur = { prenom: '', nom: '', fn: '', entreprise: '', tel: [], mail: [], adresse: '', notes: '' }; continue; }
+    if (!cur) continue;
+    if (prop === 'END') { out.push(cur); cur = null; continue; }
+    if (prop === 'N') { const p = splitEsc(val, ';').map(vUnesc); cur.nom = p[0] || ''; cur.prenom = [p[1], p[2]].filter(Boolean).join(' '); }
+    else if (prop === 'FN') cur.fn = vUnesc(val);
+    else if (prop === 'ORG') cur.entreprise = splitEsc(val, ';').map(vUnesc).filter(Boolean).join(', ');
+    else if (prop === 'TEL') cur.tel.push(vUnesc(val));
+    else if (prop === 'EMAIL') cur.mail.push(vUnesc(val));
+    else if (prop === 'ADR' && !cur.adresse) { const p = splitEsc(val, ';').map(vUnesc); cur.adresse = [p[2], p[3], p[4], p[5], p[6]].filter(Boolean).join(', ').replace(/\n/g, ', '); }
+    else if (prop === 'NOTE') cur.notes = vUnesc(val);
+  }
+  return out.map(v => {
+    if (!v.prenom && !v.nom && v.fn) { const p = v.fn.split(/\s+/); v.prenom = p.shift(); v.nom = p.join(' '); }
+    return { prenom: v.prenom, nom: v.nom, entreprise: v.entreprise, telephone: v.tel.filter(Boolean).join(', '),
+             courriel: v.mail.filter(Boolean).join(', '), adresse: v.adresse, notes: v.notes };
+  }).filter(c => c.prenom || c.nom || c.entreprise || c.telephone || c.courriel);
+}
+
+const vEsc = s => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1');
+function toVcard(c) {
+  const L = ['BEGIN:VCARD', 'VERSION:3.0', `N:${vEsc(c.nom)};${vEsc(c.prenom)};;;`, `FN:${vEsc(fullName(c))}`];
+  if (c.entreprise) L.push(`ORG:${vEsc(c.entreprise)}`);
+  c.telephone.split(',').map(s => s.trim()).filter(Boolean).forEach(t => L.push(`TEL;TYPE=CELL:${vEsc(t)}`));
+  c.courriel.split(',').map(s => s.trim()).filter(Boolean).forEach(m => L.push(`EMAIL;TYPE=INTERNET:${vEsc(m)}`));
+  if (c.adresse) L.push(`ADR;TYPE=HOME:;;${vEsc(c.adresse.replace(/\n/g, ', '))};;;;`);
+  L.push(`NOTE:${vEsc([c.notes, 'Client atelier ' + c.numero].filter(Boolean).join('\n'))}`);
+  L.push('END:VCARD');
+  return L.join('\r\n');
+}
+
+// Sur iPhone, Safari ouvre le .vcf et propose « Ajouter aux contacts » / « Ajouter les N contacts ».
+function downloadVcf(list, name) {
+  const blob = new Blob([list.map(toVcard).join('\r\n') + '\r\n'], { type: 'text/vcard;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+async function importContacts(found) {
+  const seen = new Set();
+  clients.forEach(c => {
+    if (digits(c.telephone)) seen.add('t' + digits(c.telephone));
+    if (c.courriel) seen.add('m' + c.courriel.toLowerCase());
+    seen.add('n' + fullName(c).toLowerCase());
+  });
+  const fresh = found.filter(c => {
+    const keys = ['n' + fullName(c).toLowerCase()];
+    if (digits(c.telephone)) keys.push('t' + digits(c.telephone));
+    if (c.courriel) keys.push('m' + c.courriel.toLowerCase());
+    if (keys.some(k => seen.has(k))) return false;
+    keys.forEach(k => seen.add(k)); return true;
+  });
+  const skipped = found.length - fresh.length;
+  if (!fresh.length) { say(`Aucun nouveau contact (${skipped} déjà présent${skipped > 1 ? 's' : ''}).`, true); return; }
+  if (!confirm(`Importer ${fresh.length} contact${fresh.length > 1 ? 's' : ''} ?` + (skipped ? `\n${skipped} déjà présent${skipped > 1 ? 's' : ''} ser${skipped > 1 ? 'ont ignorés' : 'a ignoré'}.` : ''))) return;
+  await loadClients(); // numéros à jour avant d’en attribuer
+  const nums = nextClientNumbers(fresh.length), today = ymd(new Date());
+  await addClients(fresh.map((c, i) => ({ ...c, numero: nums[i], documents: '', dossier_id: '', date_ajout: today })));
+  await loadClients();
+  say(`${fresh.length} client${fresh.length > 1 ? 's' : ''} importé${fresh.length > 1 ? 's' : ''}.`, true);
+}
+
+async function startImport() {
+  say();
+  // Sélecteur de contacts natif (si le navigateur le permet), sinon fichier .vcf
+  if ('contacts' in navigator && 'select' in navigator.contacts) {
+    try {
+      const sel = await navigator.contacts.select(['name', 'tel', 'email', 'address'], { multiple: true });
+      const found = sel.map(x => {
+        const p = ((x.name && x.name[0]) || '').trim().split(/\s+/);
+        const a = x.address && x.address[0];
+        return { prenom: p.shift() || '', nom: p.join(' '), entreprise: '',
+                 telephone: (x.tel || []).join(', '), courriel: (x.email || []).join(', '),
+                 adresse: a ? [...(a.addressLine || []), a.city, a.region, a.postalCode, a.country].filter(Boolean).join(', ') : '', notes: '' };
+      }).filter(c => c.prenom || c.telephone || c.courriel);
+      if (found.length) await importContacts(found);
+      return;
+    } catch (e) { console.warn('Sélecteur de contacts indisponible', e); }
+  }
+  $('#vcfInput').click();
+}
+
+$('#vcfInput').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = '';
+  try {
+    const found = (await Promise.all(files.map(f => f.text()))).flatMap(parseVcf);
+    if (!found.length) { say('Aucun contact trouvé dans ce fichier.'); return; }
+    await importContacts(found);
+  } catch (err) { fail(err); }
+};
+
+/* ============ Clients : affichage ============ */
+function renderClients() {
+  const list = $('#cliList'); list.textContent = '';
+  const q = cliQuery.trim().toLowerCase(), qd = q.replace(/\D/g, '');
+  const items = clients.filter(c => !q ||
+    [c.numero, c.prenom, c.nom, c.entreprise, c.courriel, c.adresse, c.notes].join(' ').toLowerCase().includes(q) ||
+    (qd.length >= 3 && c.telephone.replace(/\D/g, '').includes(qd))
+  ).sort((a, b) => fullName(a).localeCompare(fullName(b), 'fr'));
+  $('#cliSum').textContent = `${clients.length} client${clients.length > 1 ? 's' : ''}`;
+
+  if (!items.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.innerHTML = clients.length ? '<p>Aucun client ne correspond.</p>' : '<p>Aucun client. Touche « Ajouter » ou « Importer de l’iPhone ».</p>';
+    list.appendChild(li); return;
+  }
+
+  items.forEach(c => {
+    const li = document.createElement('li'); li.className = 'piece client';
+    const body = document.createElement('div'); body.className = 'body';
+    body.onclick = e => { if (!e.target.closest('a')) openClient(c); };
+    const head = document.createElement('div');
+    const nm = document.createElement('span'); nm.className = 'cname'; nm.textContent = fullName(c);
+    const num = document.createElement('span'); num.className = 'cnum'; num.textContent = c.numero;
+    head.append(nm, num); body.appendChild(head);
+    if (c.entreprise && fullName(c) !== c.entreprise) { const o = document.createElement('div'); o.className = 'corg'; o.textContent = c.entreprise; body.appendChild(o); }
+
+    const meta = document.createElement('div'); meta.className = 'meta';
+    c.telephone.split(',').map(s => s.trim()).filter(Boolean).forEach(t => meta.appendChild(link('tel:' + t.replace(/[^\d+]/g, ''), t)));
+    c.courriel.split(',').map(s => s.trim()).filter(Boolean).forEach(m => meta.appendChild(link('mailto:' + m, m)));
+    const open = tasks.filter(t => t.client === c.numero && t.fait !== 'oui').length;
+    if (open) { const s = document.createElement('span'); s.textContent = `${open} tâche${open > 1 ? 's' : ''} en cours`; meta.appendChild(s); }
+    body.appendChild(meta);
+    meta.querySelectorAll('a').forEach(a => { a.removeAttribute('target'); });
+
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'btn small'; edit.textContent = 'Modifier';
+    edit.setAttribute('aria-label', 'Modifier ' + fullName(c));
+    edit.onclick = () => openClient(c);
+    li.append(body, edit);
+    list.appendChild(li);
+  });
+}
+
+/* ============ Clients : fiche ============ */
+function renderCliDocs() {
+  const ul = $('#cliDocList'); ul.textContent = '';
+  const row = (content, onRemove) => {
+    const li = document.createElement('li');
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer'; rm.onclick = onRemove;
+    li.append(content, rm); ul.appendChild(li);
+  };
+  cliDocs.forEach((d, i) => row(link(d.url, d.name || 'Document'), () => { cliDocs.splice(i, 1); renderCliDocs(); }));
+  cliPending.forEach((f, i) => {
+    const s = document.createElement('span'); s.className = 'pending'; s.textContent = f.name + ' (à téléverser)';
+    row(s, () => { cliPending.splice(i, 1); renderCliDocs(); });
+  });
+}
+
+function openClient(c = null) {
+  cliEditing = c;
+  $('#formCli').reset();
+  $('#cliTitle').textContent = c ? `Client ${c.numero}` : 'Nouveau client';
+  $('#cliDel').hidden = !c; $('#cliVcf').hidden = !c;
+  if (c) {
+    $('#c-prenom').value = c.prenom; $('#c-nom').value = c.nom; $('#c-org').value = c.entreprise;
+    $('#c-tel').value = c.telephone; $('#c-mail').value = c.courriel; $('#c-adr').value = c.adresse; $('#c-notes').value = c.notes;
+  }
+  $('#c-folderName').textContent = c ? `${c.numero} - ${fullName(c)}` : 'nouveau sous-dossier';
+  const fl = $('#cliFolderLink');
+  fl.hidden = !(c && c.dossier_id);
+  if (c && c.dossier_id) fl.href = 'https://drive.google.com/drive/folders/' + c.dossier_id;
+
+  // Tâches liées + raccourcis pour en créer
+  const wrap = $('#cliTasks'); wrap.textContent = '';
+  $('#cliTasksWrap').hidden = !c;
+  if (c) {
+    tasks.filter(t => t.client === c.numero)
+      .sort((a, b) => (a.fait === 'oui') - (b.fait === 'oui') || (a.echeance || '9999').localeCompare(b.echeance || '9999'))
+      .forEach(t => {
+        const b = document.createElement('button'); b.type = 'button';
+        b.className = `dtask t-${t.type}`;
+        b.textContent = `${t.fait === 'oui' ? '✓ ' : ''}${TYPES[t.type]} · ${t.titre}${t.echeance ? ' · ' + fmtDate(t.echeance) : ''}`;
+        b.onclick = () => { $('#dlgCli').close(); openForm(t); };
+        wrap.appendChild(b);
+      });
+    const sc = document.createElement('div'); sc.className = 'shortcuts';
+    [['reparation', '+ Réparation'], ['instrument', '+ Instrument']].forEach(([type, label]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = label;
+      b.onclick = () => { $('#dlgCli').close(); openFormFor(type, c.numero); };
+      sc.appendChild(b);
+    });
+    wrap.appendChild(sc);
+  }
+  cliDocs = parseDocs(c && c.documents);
+  cliPending = [];
+  renderCliDocs();
+  $('#dlgCli').showModal();
+}
+
+$('#c-files').onchange = e => { cliPending.push(...e.target.files); e.target.value = ''; renderCliDocs(); };
+$('#cliCancel').onclick = () => { cliFromTask = false; $('#dlgCli').close(); };
+$('#cliVcf').onclick = () => cliEditing && downloadVcf([cliEditing], `${cliEditing.numero} ${fullName(cliEditing)}.vcf`);
+$('#cliExport').onclick = () => {
+  if (!clients.length) { say('Aucun client à exporter.'); return; }
+  downloadVcf(clients, `Clients atelier ${ymd(new Date())}.vcf`);
+};
+$('#cliImport').onclick = () => startImport().catch(fail);
+$('#cliSearch').oninput = e => { cliQuery = e.target.value; renderClients(); };
+
+$('#cliDel').onclick = async () => {
+  const c = cliEditing; if (!c) return;
+  const n = tasks.filter(t => t.client === c.numero).length;
+  if (!confirm(`Supprimer ${fullName(c)} (${c.numero}) ?` + (n ? `\n${n} tâche${n > 1 ? 's' : ''} y ${n > 1 ? 'sont liées' : 'est liée'} : elle${n > 1 ? 's' : ''} afficher${n > 1 ? 'ont' : 'a'} « client supprimé ».` : '') + '\nLes documents restent dans Drive.')) return;
+  $('#cliDel').disabled = true; say();
+  try { await deleteRow(CLI_SHEET, await findRow(c.numero, CLI_SHEET)); $('#dlgCli').close(); await loadClients(); render(); }
+  catch (e) { fail(e); }
+  $('#cliDel').disabled = false;
+};
+
+$('#formCli').onsubmit = async ev => {
+  ev.preventDefault();
+  const c = {
+    ...(cliEditing || {}),
+    prenom: $('#c-prenom').value.trim(), nom: $('#c-nom').value.trim(), entreprise: $('#c-org').value.trim(),
+    telephone: $('#c-tel').value.trim(), courriel: $('#c-mail').value.trim(),
+    adresse: $('#c-adr').value.trim(), notes: $('#c-notes').value.trim()
+  };
+  if (!c.prenom && !c.nom && !c.entreprise) { say('Indique au moins un prénom, un nom ou une entreprise.'); return; }
+  $('#cliSave').disabled = true; say();
+  try {
+    if (!cliEditing) {
+      await loadClients();
+      c.numero = nextClientNumbers(1)[0]; c.date_ajout = ymd(new Date()); c.dossier_id = '';
+    }
+    if (cliPending.length) {
+      const parent = await ensureClientFolder(c);
+      for (let i = 0; i < cliPending.length; i++) {
+        say(`Téléversement ${i + 1} / ${cliPending.length}…`, true);
+        cliDocs.push(await uploadDoc(cliPending[i], `${c.numero} - ${fullName(c)}`, parent));
+      }
+      cliPending = []; renderCliDocs(); say();
+    }
+    c.documents = cliDocs.length ? JSON.stringify(cliDocs) : '';
+    if (cliEditing) await updateClient(c); else await addClients([c]);
+    $('#dlgCli').close();
+    await loadClients();
+    if (cliFromTask) { fillClientSelect(c.numero); cliFromTask = false; }
+    else render();
+  } catch (e) { fail(e); }
+  $('#cliSave').disabled = false;
+};
+
 /* ============ Formulaire ============ */
 function syncFormFields() {
   const type = $('#f-type').value;
   $('#w-instrument').hidden = type !== 'instrument';
   $('#w-cout').hidden = type === 'perso';
+  $('#w-client').hidden = !CLIENT_TYPES.includes(type);
+}
+
+function fillClientSelect(selected = '') {
+  const sel = $('#f-client'); sel.textContent = '';
+  sel.add(new Option('— Aucun —', ''));
+  [...clients].sort((a, b) => fullName(a).localeCompare(fullName(b), 'fr'))
+    .forEach(c => sel.add(new Option(fullName(c) + (c.telephone ? ' · ' + c.telephone : ''), c.numero)));
+  if (selected && !clients.some(c => c.numero === selected)) sel.add(new Option('(client supprimé)', selected));
+  sel.value = selected;
 }
 
 function renderDocList() {
@@ -1088,15 +1498,23 @@ function openForm(t = null) {
   } else {
     $('#f-cal').checked = true;
   }
+  fillClientSelect(t ? t.client : '');
   formDocs = parseDocs(t && t.documents);
   pendingFiles = [];
   syncFormFields(); renderDocList();
   $('#dlg').showModal();
 }
 
+// Ouvre la tâche avec une catégorie et un client déjà choisis (depuis la fiche client).
+function openFormFor(type, client) {
+  openForm();
+  $('#f-type').value = type; fillClientSelect(client); syncFormFields();
+}
+
 $('#f-type').onchange = syncFormFields;
 $('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
-$('#add').onclick = () => (mode === 'inv' ? openInv() : openForm());
+$('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : openForm());
+$('#f-newClient').onclick = () => { cliFromTask = true; openClient(); };
 $('#cancel').onclick = () => $('#dlg').close();
 
 $('#del').onclick = async () => {
@@ -1118,6 +1536,7 @@ $('#form').onsubmit = async ev => {
     cout: type === 'perso' ? '' : $('#f-cout').value,
     lien_facture: type === 'perso' ? '' : $('#f-fact').value.trim(),
     instrument: type === 'instrument' ? $('#f-instrument').value.trim() : '',
+    client: CLIENT_TYPES.includes(type) ? $('#f-client').value : '',
     fait: editing ? editing.fait : '', event_id: editing ? editing.event_id : '', documents: ''
   };
   $('#save').disabled = true; say();
