@@ -16,6 +16,7 @@
   --paper: #f1f4f4; --surface: #ffffff; --ink: #16212b; --muted: #596a75;
   --line: #d3dbde; --accent: #0f5c5c; --accent-ink: #ffffff; --danger: #b23a2e;
   --c-globale: #3e5c9a; --c-instrument: #9a6700; --c-perso: #6b4c9a; --c-reparation: #b23a2e;
+  --free: #cfe8e4; --busy: #7d8e97; --gone: #e2e7e9;
   --radius: 10px;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -27,6 +28,7 @@
     --paper: #12191e; --surface: #1b252c; --ink: #e8eef0; --muted: #93a4ad;
     --line: #2d3b44; --accent: #4fb8b0; --accent-ink: #0b1a1a; --danger: #ef8a7e;
     --c-globale: #8fa9e6; --c-instrument: #e2b04a; --c-perso: #b9a0e6; --c-reparation: #ef8a7e;
+    --free: #1f4a46; --busy: #6b7d87; --gone: #222e35;
   }
 }
 html { scroll-padding-top: env(safe-area-inset-top, 0px); }
@@ -44,6 +46,13 @@ button { cursor: pointer; }
 
 .btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: var(--radius); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.small { padding: 4px 10px; font-size: .85rem; }
+.btn:disabled { opacity: .6; cursor: progress; }
+
+.seg { display: inline-flex; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px; margin: 4px 0 8px; }
+.seg button { border: 0; background: transparent; padding: 6px 18px; border-radius: 999px; font-weight: 500; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 
 .tabs, .views { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0; scrollbar-width: none; }
 .tabs::-webkit-scrollbar, .views::-webkit-scrollbar { display: none; }
@@ -59,20 +68,23 @@ ul#list { list-style: none; margin: 0; padding: 0; }
 .t-globale { --bar: var(--c-globale); } .t-instrument { --bar: var(--c-instrument); }
 .t-perso { --bar: var(--c-perso); } .t-reparation { --bar: var(--c-reparation); }
 .task input[type=checkbox] { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+.task .body { flex: 1; min-width: 0; cursor: pointer; }
+.task .edit { flex: none; }
 .task .title { font-weight: 500; overflow-wrap: anywhere; }
 .task .desc { color: var(--muted); font-size: .92rem; margin-top: 2px; overflow-wrap: anywhere; }
 .task .meta { color: var(--muted); font-size: .85rem; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.task .meta a { color: var(--accent); }
+.task .meta a { color: var(--accent); max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task.late .due { color: var(--danger); font-weight: 500; }
 .task.done .title { text-decoration: line-through; color: var(--muted); }
 
 .empty { text-align: center; color: var(--muted); padding: 48px 16px; }
 .empty p { margin: 0 0 16px; }
 #msg { min-height: 1.4em; color: var(--danger); font-size: .9rem; margin: 6px 0; overflow-wrap: anywhere; }
+#msg.info { color: var(--muted); }
 
 #add { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 14px 20px; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
 
-dialog { width: min(520px, calc(100% - 24px)); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 18px; }
+dialog { width: min(520px, calc(100% - 24px)); max-height: calc(100dvh - 24px); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 18px; }
 dialog::backdrop { background: rgba(0,0,0,.45); }
 dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
@@ -80,8 +92,40 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 9px 10px; width: 100%; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.actions .left { margin-right: auto; }
 .check { flex-direction: row; align-items: center; gap: 8px; }
 .check input { width: auto; }
+.doclist { list-style: none; margin: 0 0 4px; padding: 0; }
+.doclist li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.doclist li > :first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doclist a { color: var(--accent); }
+.doclist .pending { color: var(--muted); font-style: italic; }
+.docnote { font-size: .82rem; color: var(--muted); }
+.docnote a { color: var(--accent); }
+
+/* ---- Vue calendrier ---- */
+.calbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 0; }
+.calbar .wk { font-weight: 700; margin: 0 4px; }
+.calbar .hours { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .9rem; margin-left: auto; }
+.calbar select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 5px 6px; }
+.weeksum { margin: 6px 0 12px; color: var(--muted); }
+.weeksum strong { color: var(--ink); }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.day.past { opacity: .55; }
+.day h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 8px; font-size: 1rem; font-weight: 700; }
+.day h3 .free { color: var(--accent); font-size: .92rem; }
+.tl { position: relative; height: 14px; border-radius: 7px; background: var(--free); overflow: hidden; }
+.tl span { position: absolute; top: 0; bottom: 0; background: var(--busy); }
+.tl span.gone { background: var(--gone); }
+.tlx { display: flex; justify-content: space-between; font-size: .75rem; color: var(--muted); margin-top: 2px; }
+.slots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.slot { border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 2px 10px; font-size: .85rem; }
+.evs { list-style: none; margin: 8px 0 0; padding: 0; font-size: .85rem; color: var(--muted); }
+.evs li { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dtasks { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.dtask { text-align: left; border: 1px solid var(--line); border-left: 5px solid var(--bar, var(--line)); background: var(--paper); border-radius: 8px; padding: 6px 10px; font-size: .9rem; overflow-wrap: anywhere; }
+.nofree { color: var(--muted); font-size: .85rem; margin-top: 8px; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -94,13 +138,36 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
   <p id="msg" role="status"></p>
 
   <div id="app" hidden>
-    <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
-    <div class="views" id="views" aria-label="Période"></div>
-    <div class="opts">
-      <label><input type="checkbox" id="showDone"> Afficher les terminées</label>
-      <button class="btn" id="reload" type="button">Actualiser</button>
+    <div class="seg" id="mode" role="group" aria-label="Affichage">
+      <button type="button" data-m="list">Liste</button>
+      <button type="button" data-m="cal">Calendrier</button>
     </div>
-    <ul id="list"></ul>
+    <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
+
+    <section id="listView">
+      <div class="views" id="views" aria-label="Période"></div>
+      <div class="opts">
+        <label><input type="checkbox" id="showDone"> Afficher les terminées</label>
+        <button class="btn" id="reload" type="button">Actualiser</button>
+      </div>
+      <ul id="list"></ul>
+    </section>
+
+    <section id="calView" hidden>
+      <div class="calbar">
+        <button class="btn small" id="wkPrev" type="button" aria-label="Semaine précédente">‹</button>
+        <span class="wk" id="wkLabel"></span>
+        <button class="btn small" id="wkNext" type="button" aria-label="Semaine suivante">›</button>
+        <button class="btn small" id="wkToday" type="button">Cette semaine</button>
+        <span class="hours">
+          <label for="hStart">Atelier de</label><select id="hStart"></select>
+          <label for="hEnd">à</label><select id="hEnd"></select>
+        </span>
+      </div>
+      <p class="weeksum" id="weekSum"></p>
+      <div id="days"></div>
+    </section>
+
     <button class="btn primary" id="add" type="button">Ajouter</button>
   </div>
 
@@ -112,7 +179,7 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 
 <dialog id="dlg">
   <form id="form">
-    <h2>Nouvelle tâche</h2>
+    <h2 id="dlgTitle">Nouvelle tâche</h2>
     <div class="field"><label for="f-type">Catégorie</label>
       <select id="f-type">
         <option value="globale">Globales</option>
@@ -138,8 +205,15 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
       <div class="field"><label for="f-cout">Coût ($)</label><input id="f-cout" type="number" step="0.01" inputmode="decimal"></div>
       <div class="field"><label for="f-fact">Lien de la facture</label><input id="f-fact" type="url" inputmode="url" placeholder="https://"></div>
     </div>
+    <div class="field">
+      <label for="f-files">Factures et documents (photos, PDF)</label>
+      <ul class="doclist" id="docList"></ul>
+      <input id="f-files" type="file" accept="image/*,application/pdf" multiple>
+      <span class="docnote">Les fichiers vont dans le dossier Drive « Factures + Documents ». <a id="folderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
+    </div>
     <div class="field check"><input id="f-cal" type="checkbox" checked><label for="f-cal">Ajouter à Google Agenda</label></div>
     <div class="actions">
+      <button class="btn danger left" type="button" id="del" hidden>Supprimer</button>
       <button class="btn" type="button" id="cancel">Annuler</button>
       <button class="btn primary" type="submit" id="save">Enregistrer</button>
     </div>
@@ -155,26 +229,46 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/calendar.events'
 ].join(' ');
+const SPREADSHEET_NAME = 'App Tâches';
 const SHEET_TITLE = 'Tâches';
-const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id'];
+const FOLDER_NAME = 'Factures + Documents';
+const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents'];
 const TYPES = { globale: 'Globales', instrument: 'Instruments', perso: 'Perso', reparation: 'Réparation' };
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE = 'https://www.googleapis.com/drive/v3/files';
+const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
+const EVENTS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
 /* ============ État ============ */
 let tokenClient = null, accessToken = null, tokenExpiry = 0;
 let sheetId = localStorage.getItem('sheetId') || '';
+let folderId = localStorage.getItem('folderId') || '';
+let sheetGid = null;
 let tasks = [], cat = 'all', view = 'all', showDone = false;
+let mode = localStorage.getItem('mode') === 'cal' ? 'cal' : 'list';
+let editing = null, formDocs = [], pendingFiles = [];
+let weekStart = '', calSeq = 0;
+let hStart = Number(localStorage.getItem('hStart') || 8);
+let hEnd = Number(localStorage.getItem('hEnd') || 17);
 const $ = s => document.querySelector(s);
 
 /* ============ Utilitaires ============ */
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
-const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number); return ymd(new Date(y, m - 1, d + n)); };
+const toDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = toDate(s); d.setDate(d.getDate() + n); return ymd(d); };
 const endOfMonth = s => { const [y, m] = s.split('-').map(Number); return ymd(new Date(y, m, 0)); };
-const fmtDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' }); };
-const safeUrl = u => /^https?:\/\//i.test(u) ? u : '';
-const say = (t = '') => { $('#msg').textContent = t; };
+const monday = d => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return ymd(x); };
+const fmtDate = s => toDate(s).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = d => d.toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' });
+const fmtDur = min => { min = Math.round(min); const h = Math.floor(min / 60), r = min % 60; return !h ? r + ' min' : r ? `${h} h ${pad(r)}` : `${h} h`; };
+const colLetter = i => String.fromCharCode(65 + i);
+const LAST_COL = colLetter(HEADERS.length - 1);
+const range = r => encodeURIComponent(`'${SHEET_TITLE}'!${r}`);
+const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
+const say = (t = '', info = false) => { $('#msg').textContent = t; $('#msg').className = info ? 'info' : ''; };
 const fail = e => { console.error(e); say('Erreur : ' + (e.message || e)); };
+const parseDocs = s => { try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a.filter(d => d && safeUrl(d.url)) : []; } catch { return []; } };
 
 /* ============ Authentification Google ============ */
 function initAuth() {
@@ -208,6 +302,7 @@ async function connect() {
   try {
     await getToken();
     await ensureSheet();
+    await ensureHeaders();
     $('#signedOut').hidden = true; $('#app').hidden = false;
     $('#auth').textContent = 'Déconnexion';
     await load();
@@ -221,39 +316,133 @@ function disconnect() {
   $('#auth').textContent = 'Connexion Google';
 }
 
+/* ============ Google Drive ============ */
+// Retrouve un fichier créé par l’app (utile pour un 2e appareil : PC ↔ iPhone).
+async function findDrive(q) {
+  const d = await api(`${DRIVE}?${new URLSearchParams({ q, fields: 'files(id)', orderBy: 'createdTime', pageSize: '1' })}`);
+  return d.files && d.files[0] ? d.files[0].id : '';
+}
+
+async function ensureFolder() {
+  if (folderId) return folderId;
+  const q = `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  folderId = await findDrive(q);
+  if (!folderId) {
+    const f = await api(DRIVE, { method: 'POST', body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }) });
+    folderId = f.id;
+  }
+  localStorage.setItem('folderId', folderId);
+  return folderId;
+}
+
+// Réduit les grosses photos (iPhone) avant l’envoi : JPEG, 2400 px max.
+async function shrink(file) {
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error('compression'))), 'image/jpeg', 0.85));
+}
+
+async function uploadDoc(file, o, parent) {
+  let blob = file, name = file.name || 'photo.jpg', type = file.type || 'application/octet-stream';
+  if (type.startsWith('image/') && file.size > 1.5e6) {
+    try { blob = await shrink(file); name = name.replace(/\.[^.]+$/, '') + '.jpg'; type = 'image/jpeg'; } catch { /* envoi de l’original */ }
+  }
+  const meta = { name: `${o.echeance || ymd(new Date())} - ${o.titre} - ${name}`.slice(0, 200), parents: [parent] };
+  const b = 'luthier' + Date.now();
+  const body = new Blob([
+    `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,
+    `--${b}\r\nContent-Type: ${type}\r\n\r\n`, blob, `\r\n--${b}--`
+  ]);
+  const r = await api(`${DRIVE_UP}?uploadType=multipart&fields=id,webViewLink`, {
+    method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${b}` }, body
+  });
+  return { id: r.id, name, url: r.webViewLink };
+}
+
 /* ============ Google Sheets (base de données) ============ */
 async function ensureSheet() {
   if (sheetId) return;
-  const s = await api(SHEETS, { method: 'POST', body: JSON.stringify({
-    properties: { title: 'App Tâches' }, sheets: [{ properties: { title: SHEET_TITLE } }]
-  }) });
-  sheetId = s.spreadsheetId;
+  sheetId = await findDrive(`name='${SPREADSHEET_NAME}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`);
+  if (!sheetId) {
+    const s = await api(SHEETS, { method: 'POST', body: JSON.stringify({
+      properties: { title: SPREADSHEET_NAME }, sheets: [{ properties: { title: SHEET_TITLE } }]
+    }) });
+    sheetId = s.spreadsheetId;
+  }
   localStorage.setItem('sheetId', sheetId);
-  await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A1:L1`)}?valueInputOption=RAW`, {
-    method: 'PUT', body: JSON.stringify({ values: [HEADERS] })
-  });
+}
+
+// Ajoute les nouvelles colonnes (ex. « documents ») aux feuilles existantes.
+async function ensureHeaders() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${range(`A1:${LAST_COL}1`)}`);
+  const row = (d.values && d.values[0]) || [];
+  if (row.length < HEADERS.length) {
+    await api(`${SHEETS}/${sheetId}/values/${range(`A1:${LAST_COL}1`)}?valueInputOption=RAW`, {
+      method: 'PUT', body: JSON.stringify({ values: [HEADERS] })
+    });
+  }
+}
+
+async function getGid() {
+  if (sheetGid !== null) return sheetGid;
+  const d = await api(`${SHEETS}/${sheetId}?fields=sheets.properties`);
+  const s = d.sheets.find(x => x.properties.title === SHEET_TITLE);
+  if (!s) throw new Error('Onglet « ' + SHEET_TITLE + ' » introuvable.');
+  sheetGid = s.properties.sheetId;
+  return sheetGid;
+}
+
+// Retrouve la ligne actuelle d’une tâche par son id (sûr même si un autre appareil a supprimé une ligne).
+async function findRow(id) {
+  const d = await api(`${SHEETS}/${sheetId}/values/${range('A:A')}`);
+  const i = (d.values || []).findIndex(r => r[0] === id);
+  if (i < 1) throw new Error('Tâche introuvable dans la feuille. Touche « Actualiser ».');
+  return i + 1;
 }
 
 async function load() {
-  const d = await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A2:L`)}`);
-  tasks = (d.values || []).map((row, i) => {
-    const o = { _row: i + 2 };
+  const d = await api(`${SHEETS}/${sheetId}/values/${range(`A2:${LAST_COL}`)}`);
+  tasks = (d.values || []).map(row => {
+    const o = {};
     HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
     return o;
-  });
+  }).filter(t => t.id);
   render();
 }
 
+const toRow = o => HEADERS.map(h => o[h] ?? '');
+
 async function addTask(o) {
-  const row = HEADERS.map(h => o[h] ?? '');
-  await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A:L`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-    method: 'POST', body: JSON.stringify({ values: [row] })
+  await api(`${SHEETS}/${sheetId}/values/${range(`A:${LAST_COL}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: [toRow(o)] })
   });
+}
+
+async function updateTask(o) {
+  const r = await findRow(o.id);
+  await api(`${SHEETS}/${sheetId}/values/${range(`A${r}:${LAST_COL}${r}`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [toRow(o)] })
+  });
+}
+
+async function deleteTask(t) {
+  const r = await findRow(t.id);
+  const gid = await getGid();
+  await api(`${SHEETS}/${sheetId}:batchUpdate`, {
+    method: 'POST', body: JSON.stringify({ requests: [{ deleteDimension: {
+      range: { sheetId: gid, dimension: 'ROWS', startIndex: r - 1, endIndex: r }
+    } }] })
+  });
+  if (t.event_id) await deleteEvent(t.event_id);
 }
 
 async function toggleDone(t, v) {
   try {
-    await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!K${t._row}`)}?valueInputOption=RAW`, {
+    const r = await findRow(t.id);
+    await api(`${SHEETS}/${sheetId}/values/${range(colLetter(HEADERS.indexOf('fait')) + r)}?valueInputOption=RAW`, {
       method: 'PUT', body: JSON.stringify({ values: [[v ? 'oui' : '']] })
     });
     t.fait = v ? 'oui' : '';
@@ -262,16 +451,35 @@ async function toggleDone(t, v) {
 }
 
 /* ============ Google Agenda ============ */
-async function createEvent(o) {
+function eventBody(o) {
+  const docs = parseDocs(o.documents).map(d => d.url);
   const body = {
     summary: `[${TYPES[o.type]}] ${o.titre}`,
-    description: [o.description, o.lien].filter(Boolean).join('\n'),
+    description: [o.description, o.lien, ...docs].filter(Boolean).join('\n'),
     start: { date: o.echeance },
     end: { date: addDays(o.echeance, 1) }
   };
   const freq = { quotidienne: 'DAILY', hebdomadaire: 'WEEKLY', mensuelle: 'MONTHLY' }[o.recurrence];
   if (freq) body.recurrence = ['RRULE:FREQ=' + freq];
-  const ev = await api('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify(body) });
+  return body;
+}
+
+async function deleteEvent(id) {
+  try { await api(`${EVENTS}/${encodeURIComponent(id)}`, { method: 'DELETE' }); }
+  catch (e) { if (!/^(404|410)/.test(e.message)) throw e; }
+}
+
+// Crée, met à jour ou retire l’événement selon le formulaire. Retourne l’event_id final.
+async function syncEvent(o, want) {
+  const wanted = want && o.echeance;
+  if (!wanted) { if (o.event_id) await deleteEvent(o.event_id); return ''; }
+  if (o.event_id) {
+    try {
+      await api(`${EVENTS}/${encodeURIComponent(o.event_id)}`, { method: 'PUT', body: JSON.stringify(eventBody(o)) });
+      return o.event_id;
+    } catch (e) { if (!/^(404|410)/.test(e.message)) throw e; } // supprimé dans Agenda : on le recrée
+  }
+  const ev = await api(EVENTS, { method: 'POST', body: JSON.stringify(eventBody(o)) });
   return ev.id;
 }
 
@@ -293,6 +501,9 @@ function buildNav() {
     b.onclick = () => { view = k; buildNav(); render(); };
     views.appendChild(b);
   });
+  document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
+  $('#listView').hidden = mode !== 'list';
+  $('#calView').hidden = mode !== 'cal';
 }
 
 function link(href, text) {
@@ -302,6 +513,7 @@ function link(href, text) {
 }
 
 function render() {
+  if (mode === 'cal') { renderCalendar(); return; }
   const list = $('#list'); list.textContent = '';
   const today = ymd(new Date());
   const items = tasks.filter(t => {
@@ -329,7 +541,8 @@ function render() {
     cb.setAttribute('aria-label', 'Marquer comme terminée');
     cb.onchange = () => toggleDone(t, cb.checked);
 
-    const body = document.createElement('div');
+    const body = document.createElement('div'); body.className = 'body';
+    body.onclick = e => { if (!e.target.closest('a')) openForm(t); };
     const title = document.createElement('div'); title.className = 'title'; title.textContent = t.titre;
     body.appendChild(title);
     if (t.description) { const d = document.createElement('div'); d.className = 'desc'; d.textContent = t.description; body.appendChild(d); }
@@ -342,11 +555,162 @@ function render() {
     if (t.cout) add(Number(t.cout).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }));
     if (safeUrl(t.lien)) meta.appendChild(link(t.lien, 'Lien'));
     if (safeUrl(t.lien_facture)) meta.appendChild(link(t.lien_facture, 'Facture'));
+    parseDocs(t.documents).forEach(d => meta.appendChild(link(d.url, d.name || 'Document')));
     body.appendChild(meta);
 
-    li.append(cb, body);
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'btn small edit'; edit.textContent = 'Modifier';
+    edit.setAttribute('aria-label', 'Modifier « ' + t.titre + ' »');
+    edit.onclick = () => openForm(t);
+
+    li.append(cb, body, edit);
     list.appendChild(li);
   });
+}
+
+/* ============ Vue calendrier (temps disponible) ============ */
+function fillHours() {
+  const s = $('#hStart'), e = $('#hEnd');
+  s.textContent = ''; e.textContent = '';
+  for (let h = 0; h <= 23; h++) s.add(new Option(h + ' h', h, false, h === hStart));
+  for (let h = 1; h <= 24; h++) e.add(new Option(h + ' h', h, false, h === hEnd));
+}
+
+function onHoursChange() {
+  hStart = Number($('#hStart').value); hEnd = Number($('#hEnd').value);
+  if (hEnd <= hStart) { hEnd = Math.min(24, hStart + 1); $('#hEnd').value = hEnd; }
+  localStorage.setItem('hStart', hStart); localStorage.setItem('hEnd', hEnd);
+  renderCalendar();
+}
+
+async function renderCalendar() {
+  const seq = ++calSeq;
+  if (!weekStart) weekStart = monday(new Date());
+  const last = addDays(weekStart, 6);
+  const opt = { day: 'numeric', month: 'short' };
+  $('#wkLabel').textContent = `${toDate(weekStart).toLocaleDateString('fr-CA', opt)} – ${toDate(last).toLocaleDateString('fr-CA', { ...opt, year: 'numeric' })}`;
+  $('#weekSum').textContent = 'Chargement de l’agenda…';
+
+  const t0 = toDate(weekStart), t1 = toDate(addDays(weekStart, 7));
+  let events = [];
+  try {
+    const d = await api(`${EVENTS}?${new URLSearchParams({
+      timeMin: t0.toISOString(), timeMax: t1.toISOString(),
+      singleEvents: 'true', orderBy: 'startTime', maxResults: '500'
+    })}`);
+    events = (d.items || []).filter(e =>
+      e.status !== 'cancelled' && e.start && e.start.dateTime && e.transparency !== 'transparent' &&
+      !(e.attendees || []).some(a => a.self && a.responseStatus === 'declined')
+    ).map(e => ({ s: new Date(e.start.dateTime), e: new Date(e.end.dateTime), title: e.summary || '(Occupé)' }));
+  } catch (e) { fail(e); }
+  if (seq !== calSeq) return;
+
+  const now = new Date(), today = ymd(now);
+  const days = $('#days'); days.textContent = '';
+  let weekFree = 0, weekTasks = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const ds = addDays(weekStart, i);
+    const ws = toDate(ds); ws.setHours(hStart);
+    const we = toDate(ds); we.setHours(hEnd);
+    const past = we <= now;
+    const from = ds === today && now > ws ? now : ws;
+    const span = we - ws;
+
+    // Plages occupées pendant les heures d’atelier, fusionnées
+    const busy = events
+      .filter(e => e.s < we && e.e > ws)
+      .map(e => ({ s: Math.max(e.s, ws), e: Math.min(e.e, we) }))
+      .sort((a, b) => a.s - b.s)
+      .reduce((acc, b) => {
+        const p = acc[acc.length - 1];
+        if (p && b.s <= p.e) p.e = Math.max(p.e, b.e); else acc.push({ ...b });
+        return acc;
+      }, []);
+
+    // Plages libres
+    const free = [];
+    let cur = +from;
+    if (!past) {
+      busy.forEach(b => { if (b.s > cur) free.push({ s: cur, e: b.s }); cur = Math.max(cur, b.e); });
+      if (we > cur) free.push({ s: cur, e: +we });
+    }
+    const freeMin = free.reduce((n, f) => n + (f.e - f.s) / 60000, 0);
+    if (!past) weekFree += freeMin;
+
+    const box = document.createElement('div');
+    box.className = 'day' + (ds === today ? ' today' : '') + (past ? ' past' : '');
+
+    const h = document.createElement('h3');
+    const name = document.createElement('span'); name.textContent = fmtDate(ds);
+    const fr = document.createElement('span'); fr.className = 'free';
+    fr.textContent = past ? 'passé' : fmtDur(freeMin) + ' libres';
+    h.append(name, fr);
+    box.appendChild(h);
+
+    // Barre visuelle : vert = libre, gris = occupé
+    const tl = document.createElement('div'); tl.className = 'tl';
+    tl.setAttribute('role', 'img');
+    tl.setAttribute('aria-label', `${fmtDur(freeMin)} libres entre ${hStart} h et ${hEnd} h`);
+    const seg = (s, e, cls) => {
+      const sp = document.createElement('span'); if (cls) sp.className = cls;
+      sp.style.left = ((s - ws) / span * 100) + '%';
+      sp.style.width = ((e - s) / span * 100) + '%';
+      tl.appendChild(sp);
+    };
+    if (past) seg(+ws, +we, 'gone');
+    else if (from > ws) seg(+ws, +from, 'gone');
+    busy.forEach(b => seg(b.s, b.e));
+    box.appendChild(tl);
+    const tlx = document.createElement('div'); tlx.className = 'tlx';
+    tlx.innerHTML = `<span>${hStart} h</span><span>${hEnd} h</span>`;
+    box.appendChild(tlx);
+
+    if (!past) {
+      const usable = free.filter(f => f.e - f.s >= 15 * 60000);
+      if (usable.length) {
+        const slots = document.createElement('div'); slots.className = 'slots';
+        usable.forEach(f => {
+          const s = document.createElement('span'); s.className = 'slot';
+          s.textContent = `${fmtTime(new Date(f.s))} – ${fmtTime(new Date(f.e))} (${fmtDur((f.e - f.s) / 60000)})`;
+          slots.appendChild(s);
+        });
+        box.appendChild(slots);
+      } else {
+        const n = document.createElement('div'); n.className = 'nofree'; n.textContent = 'Aucune plage libre.';
+        box.appendChild(n);
+      }
+    }
+
+    // Rendez-vous de la journée
+    const dayEnd = toDate(addDays(ds, 1));
+    const dayEvs = events.filter(e => e.s < dayEnd && e.e > toDate(ds));
+    if (dayEvs.length) {
+      const ul = document.createElement('ul'); ul.className = 'evs';
+      dayEvs.forEach(e => { const li = document.createElement('li'); li.textContent = `${fmtTime(e.s)} – ${fmtTime(e.e)} · ${e.title}`; ul.appendChild(li); });
+      box.appendChild(ul);
+    }
+
+    // Tâches à échéance ce jour-là
+    const due = tasks.filter(t => t.echeance === ds && t.fait !== 'oui' && (cat === 'all' || t.type === cat));
+    weekTasks += due.length;
+    if (due.length) {
+      const wrap = document.createElement('div'); wrap.className = 'dtasks';
+      due.forEach(t => {
+        const b = document.createElement('button'); b.type = 'button';
+        b.className = `dtask t-${t.type}`; b.textContent = t.titre;
+        b.onclick = () => openForm(t);
+        wrap.appendChild(b);
+      });
+      box.appendChild(wrap);
+    }
+    days.appendChild(box);
+  }
+
+  const sum = $('#weekSum'); sum.textContent = '';
+  const s1 = document.createElement('strong'); s1.textContent = fmtDur(weekFree);
+  const s2 = document.createElement('strong'); s2.textContent = String(weekTasks);
+  sum.append('Temps libre à l’atelier : ', s1, ' · Tâches à échéance : ', s2);
 }
 
 /* ============ Formulaire ============ */
@@ -356,27 +720,83 @@ function syncFormFields() {
   $('#w-cout').hidden = type === 'perso';
 }
 
+function renderDocList() {
+  const ul = $('#docList'); ul.textContent = '';
+  const row = (content, onRemove) => {
+    const li = document.createElement('li');
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer'; rm.onclick = onRemove;
+    li.append(content, rm); ul.appendChild(li);
+  };
+  formDocs.forEach((d, i) => row(link(d.url, d.name || 'Document'), () => { formDocs.splice(i, 1); renderDocList(); }));
+  pendingFiles.forEach((f, i) => {
+    const s = document.createElement('span'); s.className = 'pending'; s.textContent = f.name + ' (à téléverser)';
+    row(s, () => { pendingFiles.splice(i, 1); renderDocList(); });
+  });
+  const fl = $('#folderLink');
+  fl.hidden = !folderId;
+  if (folderId) fl.href = 'https://drive.google.com/drive/folders/' + folderId;
+}
+
+function openForm(t = null) {
+  editing = t;
+  $('#form').reset();
+  $('#dlgTitle').textContent = t ? 'Modifier la tâche' : 'Nouvelle tâche';
+  $('#del').hidden = !t;
+  if (t) {
+    $('#f-type').value = t.type || 'globale';
+    $('#f-titre').value = t.titre; $('#f-desc').value = t.description; $('#f-lien').value = t.lien;
+    $('#f-date').value = t.echeance; $('#f-rec').value = t.recurrence;
+    $('#f-instrument').value = t.instrument; $('#f-cout').value = t.cout; $('#f-fact').value = t.lien_facture;
+    $('#f-cal').checked = !!t.event_id;
+  } else {
+    $('#f-cal').checked = true;
+  }
+  formDocs = parseDocs(t && t.documents);
+  pendingFiles = [];
+  syncFormFields(); renderDocList();
+  $('#dlg').showModal();
+}
+
 $('#f-type').onchange = syncFormFields;
-$('#add').onclick = () => { $('#form').reset(); $('#f-cal').checked = true; syncFormFields(); $('#dlg').showModal(); };
+$('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
+$('#add').onclick = () => openForm();
 $('#cancel').onclick = () => $('#dlg').close();
+
+$('#del').onclick = async () => {
+  if (!editing || !confirm(`Supprimer « ${editing.titre} » ?\nL’événement Agenda sera aussi supprimé. Les documents restent dans Drive.`)) return;
+  $('#del').disabled = true; say();
+  try { await deleteTask(editing); $('#dlg').close(); await load(); }
+  catch (e) { fail(e); }
+  $('#del').disabled = false;
+};
 
 $('#form').onsubmit = async ev => {
   ev.preventDefault();
   const type = $('#f-type').value;
   const o = {
-    id: crypto.randomUUID().slice(0, 8), type,
+    id: editing ? editing.id : crypto.randomUUID().slice(0, 8), type,
     titre: $('#f-titre').value.trim(), description: $('#f-desc').value.trim(),
     lien: $('#f-lien').value.trim(), echeance: $('#f-date').value,
     recurrence: $('#f-rec').value,
     cout: type === 'perso' ? '' : $('#f-cout').value,
     lien_facture: type === 'perso' ? '' : $('#f-fact').value.trim(),
     instrument: type === 'instrument' ? $('#f-instrument').value.trim() : '',
-    fait: '', event_id: ''
+    fait: editing ? editing.fait : '', event_id: editing ? editing.event_id : '', documents: ''
   };
   $('#save').disabled = true; say();
   try {
-    if ($('#f-cal').checked && o.echeance) o.event_id = await createEvent(o);
-    await addTask(o);
+    if (pendingFiles.length) {
+      const parent = await ensureFolder();
+      for (let i = 0; i < pendingFiles.length; i++) {
+        say(`Téléversement ${i + 1} / ${pendingFiles.length}…`, true);
+        formDocs.push(await uploadDoc(pendingFiles[i], o, parent));
+      }
+      pendingFiles = []; renderDocList(); say();
+    }
+    o.documents = formDocs.length ? JSON.stringify(formDocs) : '';
+    o.event_id = await syncEvent(o, $('#f-cal').checked);
+    if (editing) await updateTask(o); else await addTask(o);
     $('#dlg').close();
     await load();
   } catch (e) { fail(e); }
@@ -388,6 +808,15 @@ $('#auth').onclick = () => (accessToken ? disconnect() : connect());
 $('#auth2').onclick = connect;
 $('#reload').onclick = () => load().catch(fail);
 $('#showDone').onchange = e => { showDone = e.target.checked; render(); };
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+  mode = b.dataset.m; localStorage.setItem('mode', mode); buildNav(); render();
+});
+$('#wkPrev').onclick = () => { weekStart = addDays(weekStart, -7); renderCalendar(); };
+$('#wkNext').onclick = () => { weekStart = addDays(weekStart, 7); renderCalendar(); };
+$('#wkToday').onclick = () => { weekStart = monday(new Date()); renderCalendar(); };
+$('#hStart').onchange = onHoursChange;
+$('#hEnd').onchange = onHoursChange;
+fillHours();
 buildNav();
 </script>
 <script src="https://accounts.google.com/gsi/client" async defer onload="initAuth()"></script>
