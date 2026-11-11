@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tâches">
+<meta name="theme-color" content="#0f5c5c">
+<meta name="color-scheme" content="light dark">
+<title>Mes tâches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #f1f4f4; --surface: #ffffff; --ink: #16212b; --muted: #596a75;
+  --line: #d3dbde; --accent: #0f5c5c; --accent-ink: #ffffff; --danger: #b23a2e;
+  --c-globale: #3e5c9a; --c-instrument: #9a6700; --c-perso: #6b4c9a; --c-reparation: #b23a2e;
+  --radius: 10px;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #12191e; --surface: #1b252c; --ink: #e8eef0; --muted: #93a4ad;
+    --line: #2d3b44; --accent: #4fb8b0; --accent-ink: #0b1a1a; --danger: #ef8a7e;
+    --c-globale: #8fa9e6; --c-instrument: #e2b04a; --c-perso: #b9a0e6; --c-reparation: #ef8a7e;
+  }
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 400 16px/1.45 "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 16px 96px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 8px; }
+h1 { font-size: 1.5rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+button, select, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: var(--radius); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; }
+
+.tabs, .views { display: flex; gap: 8px; overflow-x: auto; padding: 6px 0; scrollbar-width: none; }
+.tabs::-webkit-scrollbar, .views::-webkit-scrollbar { display: none; }
+.tab { flex: none; border: 0; background: transparent; padding: 8px 4px; margin-right: 10px; font-weight: 500; color: var(--muted); border-bottom: 3px solid transparent; }
+.tab[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 14px; font-size: .9rem; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.opts { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .9rem; padding: 4px 0 10px; }
+.opts label { display: flex; gap: 8px; align-items: center; }
+
+ul#list { list-style: none; margin: 0; padding: 0; }
+.task { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--bar, var(--line)); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.t-globale { --bar: var(--c-globale); } .t-instrument { --bar: var(--c-instrument); }
+.t-perso { --bar: var(--c-perso); } .t-reparation { --bar: var(--c-reparation); }
+.task input[type=checkbox] { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
+.task .title { font-weight: 500; overflow-wrap: anywhere; }
+.task .desc { color: var(--muted); font-size: .92rem; margin-top: 2px; overflow-wrap: anywhere; }
+.task .meta { color: var(--muted); font-size: .85rem; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.task .meta a { color: var(--accent); }
+.task.late .due { color: var(--danger); font-weight: 500; }
+.task.done .title { text-decoration: line-through; color: var(--muted); }
+
+.empty { text-align: center; color: var(--muted); padding: 48px 16px; }
+.empty p { margin: 0 0 16px; }
+#msg { min-height: 1.4em; color: var(--danger); font-size: .9rem; margin: 6px 0; overflow-wrap: anywhere; }
+
+#add { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 14px 20px; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+
+dialog { width: min(520px, calc(100% - 24px)); border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 18px; }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+.field label { font-size: .88rem; color: var(--muted); }
+.field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; padding: 9px 10px; width: 100%; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.check { flex-direction: row; align-items: center; gap: 8px; }
+.check input { width: auto; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mes tâches</h1>
+    <button class="btn" id="auth" type="button">Connexion Google</button>
+  </header>
+  <p id="msg" role="status"></p>
+
+  <div id="app" hidden>
+    <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
+    <div class="views" id="views" aria-label="Période"></div>
+    <div class="opts">
+      <label><input type="checkbox" id="showDone"> Afficher les terminées</label>
+      <button class="btn" id="reload" type="button">Actualiser</button>
+    </div>
+    <ul id="list"></ul>
+    <button class="btn primary" id="add" type="button">Ajouter</button>
+  </div>
+
+  <div id="signedOut" class="empty">
+    <p>Connecte-toi avec Google pour créer ta feuille de tâches et la synchroniser entre ton PC et ton iPhone.</p>
+    <button class="btn primary" id="auth2" type="button">Connexion Google</button>
+  </div>
+</div>
+
+<dialog id="dlg">
+  <form id="form">
+    <h2>Nouvelle tâche</h2>
+    <div class="field"><label for="f-type">Catégorie</label>
+      <select id="f-type">
+        <option value="globale">Globales</option>
+        <option value="instrument">Instruments</option>
+        <option value="perso">Perso</option>
+        <option value="reparation">Réparation</option>
+      </select></div>
+    <div class="field"><label for="f-titre">Titre</label><input id="f-titre" required></div>
+    <div class="field"><label for="f-desc">Description</label><textarea id="f-desc" rows="2"></textarea></div>
+    <div class="field"><label for="f-lien">Lien</label><input id="f-lien" type="url" inputmode="url" placeholder="https://"></div>
+    <div class="row2">
+      <div class="field"><label for="f-date">Date d’échéance</label><input id="f-date" type="date"></div>
+      <div class="field"><label for="f-rec">Récurrence</label>
+        <select id="f-rec">
+          <option value="">Aucune</option>
+          <option value="quotidienne">Quotidienne</option>
+          <option value="hebdomadaire">Hebdomadaire</option>
+          <option value="mensuelle">Mensuelle</option>
+        </select></div>
+    </div>
+    <div class="field" id="w-instrument" hidden><label for="f-instrument">Instrument</label><input id="f-instrument"></div>
+    <div class="row2" id="w-cout">
+      <div class="field"><label for="f-cout">Coût ($)</label><input id="f-cout" type="number" step="0.01" inputmode="decimal"></div>
+      <div class="field"><label for="f-fact">Lien de la facture</label><input id="f-fact" type="url" inputmode="url" placeholder="https://"></div>
+    </div>
+    <div class="field check"><input id="f-cal" type="checkbox" checked><label for="f-cal">Ajouter à Google Agenda</label></div>
+    <div class="actions">
+      <button class="btn" type="button" id="cancel">Annuler</button>
+      <button class="btn primary" type="submit" id="save">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ============ Configuration ============ */
+// Colle ici l’ID client OAuth créé dans Google Cloud Console (type « Application Web »).
+const CLIENT_ID = '708841547500-a78glv4m9j9jcr2vfn07ai6pkq5ptbvh.apps.googleusercontent.com';
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/calendar.events'
+].join(' ');
+const SHEET_TITLE = 'Tâches';
+const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id'];
+const TYPES = { globale: 'Globales', instrument: 'Instruments', perso: 'Perso', reparation: 'Réparation' };
+const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+/* ============ État ============ */
+let tokenClient = null, accessToken = null, tokenExpiry = 0;
+let sheetId = localStorage.getItem('sheetId') || '';
+let tasks = [], cat = 'all', view = 'all', showDone = false;
+const $ = s => document.querySelector(s);
+
+/* ============ Utilitaires ============ */
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number); return ymd(new Date(y, m - 1, d + n)); };
+const endOfMonth = s => { const [y, m] = s.split('-').map(Number); return ymd(new Date(y, m, 0)); };
+const fmtDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' }); };
+const safeUrl = u => /^https?:\/\//i.test(u) ? u : '';
+const say = (t = '') => { $('#msg').textContent = t; };
+const fail = e => { console.error(e); say('Erreur : ' + (e.message || e)); };
+
+/* ============ Authentification Google ============ */
+function initAuth() {
+  if (CLIENT_ID.startsWith('COLLE_ICI')) { say('Configuration requise : remplace CLIENT_ID dans le code par ton ID client OAuth.'); return; }
+  tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPES, callback: () => {} });
+}
+
+function getToken() {
+  return new Promise((resolve, reject) => {
+    if (accessToken && Date.now() < tokenExpiry - 60000) return resolve(accessToken);
+    if (!tokenClient) return reject(new Error('Google n’est pas encore chargé ou CLIENT_ID est manquant.'));
+    tokenClient.callback = r => {
+      if (r.error) return reject(new Error(r.error));
+      accessToken = r.access_token;
+      tokenExpiry = Date.now() + Number(r.expires_in) * 1000;
+      resolve(accessToken);
+    };
+    tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function api(url, opts = {}) {
+  const t = await getToken();
+  const r = await fetch(url, { ...opts, headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  if (!r.ok) throw new Error(r.status + ' ' + (await r.text()).slice(0, 200));
+  return r.status === 204 ? null : r.json();
+}
+
+async function connect() {
+  say();
+  try {
+    await getToken();
+    await ensureSheet();
+    $('#signedOut').hidden = true; $('#app').hidden = false;
+    $('#auth').textContent = 'Déconnexion';
+    await load();
+  } catch (e) { fail(e); }
+}
+
+function disconnect() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null; tasks = [];
+  $('#app').hidden = true; $('#signedOut').hidden = false;
+  $('#auth').textContent = 'Connexion Google';
+}
+
+/* ============ Google Sheets (base de données) ============ */
+async function ensureSheet() {
+  if (sheetId) return;
+  const s = await api(SHEETS, { method: 'POST', body: JSON.stringify({
+    properties: { title: 'App Tâches' }, sheets: [{ properties: { title: SHEET_TITLE } }]
+  }) });
+  sheetId = s.spreadsheetId;
+  localStorage.setItem('sheetId', sheetId);
+  await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A1:L1`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [HEADERS] })
+  });
+}
+
+async function load() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A2:L`)}`);
+  tasks = (d.values || []).map((row, i) => {
+    const o = { _row: i + 2 };
+    HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
+    return o;
+  });
+  render();
+}
+
+async function addTask(o) {
+  const row = HEADERS.map(h => o[h] ?? '');
+  await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!A:L`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: [row] })
+  });
+}
+
+async function toggleDone(t, v) {
+  try {
+    await api(`${SHEETS}/${sheetId}/values/${encodeURIComponent(`'${SHEET_TITLE}'!K${t._row}`)}?valueInputOption=RAW`, {
+      method: 'PUT', body: JSON.stringify({ values: [[v ? 'oui' : '']] })
+    });
+    t.fait = v ? 'oui' : '';
+  } catch (e) { fail(e); }
+  render();
+}
+
+/* ============ Google Agenda ============ */
+async function createEvent(o) {
+  const body = {
+    summary: `[${TYPES[o.type]}] ${o.titre}`,
+    description: [o.description, o.lien].filter(Boolean).join('\n'),
+    start: { date: o.echeance },
+    end: { date: addDays(o.echeance, 1) }
+  };
+  const freq = { quotidienne: 'DAILY', hebdomadaire: 'WEEKLY', mensuelle: 'MONTHLY' }[o.recurrence];
+  if (freq) body.recurrence = ['RRULE:FREQ=' + freq];
+  const ev = await api('https://www.googleapis.com/calendar/v3/calendars/primary/events', { method: 'POST', body: JSON.stringify(body) });
+  return ev.id;
+}
+
+/* ============ Affichage ============ */
+function buildNav() {
+  const tabs = $('#tabs'); tabs.textContent = '';
+  [['all', 'Toutes'], ...Object.entries(TYPES)].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'tab'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(cat === k));
+    b.onclick = () => { cat = k; buildNav(); render(); };
+    tabs.appendChild(b);
+  });
+  const views = $('#views'); views.textContent = '';
+  [['all', 'Tout'], ['today', 'Aujourd’hui'], ['week', '7 jours'], ['month', 'Ce mois']].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(view === k));
+    b.onclick = () => { view = k; buildNav(); render(); };
+    views.appendChild(b);
+  });
+}
+
+function link(href, text) {
+  const a = document.createElement('a');
+  a.href = href; a.textContent = text; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  return a;
+}
+
+function render() {
+  const list = $('#list'); list.textContent = '';
+  const today = ymd(new Date());
+  const items = tasks.filter(t => {
+    if (cat !== 'all' && t.type !== cat) return false;
+    if (!showDone && t.fait === 'oui') return false;
+    if (view === 'today') return t.echeance && t.echeance <= today;
+    if (view === 'week') return t.echeance && t.echeance <= addDays(today, 7);
+    if (view === 'month') return t.echeance && t.echeance <= endOfMonth(today);
+    return true;
+  }).sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+
+  if (!items.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.innerHTML = '<p>Aucune tâche ici. Touche « Ajouter » pour en créer une.</p>';
+    list.appendChild(li); return;
+  }
+
+  items.forEach(t => {
+    const li = document.createElement('li');
+    const late = t.echeance && t.echeance < today && t.fait !== 'oui';
+    li.className = `task t-${t.type}${late ? ' late' : ''}${t.fait === 'oui' ? ' done' : ''}`;
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = t.fait === 'oui';
+    cb.setAttribute('aria-label', 'Marquer comme terminée');
+    cb.onchange = () => toggleDone(t, cb.checked);
+
+    const body = document.createElement('div');
+    const title = document.createElement('div'); title.className = 'title'; title.textContent = t.titre;
+    body.appendChild(title);
+    if (t.description) { const d = document.createElement('div'); d.className = 'desc'; d.textContent = t.description; body.appendChild(d); }
+
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); return s; };
+    if (t.echeance) add(fmtDate(t.echeance)).classList.add('due');
+    if (t.recurrence) add('↻ ' + t.recurrence);
+    if (t.instrument) add(t.instrument);
+    if (t.cout) add(Number(t.cout).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }));
+    if (safeUrl(t.lien)) meta.appendChild(link(t.lien, 'Lien'));
+    if (safeUrl(t.lien_facture)) meta.appendChild(link(t.lien_facture, 'Facture'));
+    body.appendChild(meta);
+
+    li.append(cb, body);
+    list.appendChild(li);
+  });
+}
+
+/* ============ Formulaire ============ */
+function syncFormFields() {
+  const type = $('#f-type').value;
+  $('#w-instrument').hidden = type !== 'instrument';
+  $('#w-cout').hidden = type === 'perso';
+}
+
+$('#f-type').onchange = syncFormFields;
+$('#add').onclick = () => { $('#form').reset(); $('#f-cal').checked = true; syncFormFields(); $('#dlg').showModal(); };
+$('#cancel').onclick = () => $('#dlg').close();
+
+$('#form').onsubmit = async ev => {
+  ev.preventDefault();
+  const type = $('#f-type').value;
+  const o = {
+    id: crypto.randomUUID().slice(0, 8), type,
+    titre: $('#f-titre').value.trim(), description: $('#f-desc').value.trim(),
+    lien: $('#f-lien').value.trim(), echeance: $('#f-date').value,
+    recurrence: $('#f-rec').value,
+    cout: type === 'perso' ? '' : $('#f-cout').value,
+    lien_facture: type === 'perso' ? '' : $('#f-fact').value.trim(),
+    instrument: type === 'instrument' ? $('#f-instrument').value.trim() : '',
+    fait: '', event_id: ''
+  };
+  $('#save').disabled = true; say();
+  try {
+    if ($('#f-cal').checked && o.echeance) o.event_id = await createEvent(o);
+    await addTask(o);
+    $('#dlg').close();
+    await load();
+  } catch (e) { fail(e); }
+  $('#save').disabled = false;
+};
+
+/* ============ Événements ============ */
+$('#auth').onclick = () => (accessToken ? disconnect() : connect());
+$('#auth2').onclick = connect;
+$('#reload').onclick = () => load().catch(fail);
+$('#showDone').onchange = e => { showDone = e.target.checked; render(); };
+buildNav();
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initAuth()"></script>
+</body>
+</html>
