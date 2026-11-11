@@ -126,6 +126,23 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
 .dtasks { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
 .dtask { text-align: left; border: 1px solid var(--line); border-left: 5px solid var(--bar, var(--line)); background: var(--paper); border-radius: 8px; padding: 6px 10px; font-size: .9rem; overflow-wrap: anywhere; }
 .nofree { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+
+/* ---- Inventaire ---- */
+.invbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 0 8px; }
+.invbar input[type=search] { flex: 1; min-width: 180px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; }
+.invsum { color: var(--muted); margin: 2px 0 10px; font-size: .92rem; }
+.invsum strong { color: var(--ink); }
+ul#invList { list-style: none; margin: 0; padding: 0; }
+.piece { display: flex; gap: 12px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+.piece .body { flex: 1; min-width: 0; cursor: pointer; }
+.piece .num { font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.piece .kind { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.piece .wood { font-weight: 500; margin-top: 2px; }
+.piece .meta { color: var(--muted); font-size: .85rem; margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.piece .meta a { color: var(--accent); max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.piece.used { opacity: .6; }
+.piece.used .num { text-decoration: line-through; }
+.numprev { font-weight: 700; font-size: 1.1rem; }
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -141,6 +158,7 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
     <div class="seg" id="mode" role="group" aria-label="Affichage">
       <button type="button" data-m="list">Liste</button>
       <button type="button" data-m="cal">Calendrier</button>
+      <button type="button" data-m="inv">Inventaire</button>
     </div>
     <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
 
@@ -166,6 +184,19 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
       </div>
       <p class="weeksum" id="weekSum"></p>
       <div id="days"></div>
+    </section>
+
+    <section id="invView" hidden>
+      <div class="views" id="invTypes" aria-label="Types de pièce"></div>
+      <div class="invbar">
+        <input type="search" id="invSearch" placeholder="Chercher : numéro, bois, entreposage…" aria-label="Chercher dans l’inventaire">
+      </div>
+      <div class="opts">
+        <label><input type="checkbox" id="showUsed"> Afficher les pièces utilisées</label>
+        <button class="btn" id="invReload" type="button">Actualiser</button>
+      </div>
+      <p class="invsum" id="invSum"></p>
+      <ul id="invList"></ul>
     </section>
 
     <button class="btn primary" id="add" type="button">Ajouter</button>
@@ -220,6 +251,41 @@ dialog h2 { margin: 0 0 12px; font-size: 1.2rem; }
   </form>
 </dialog>
 
+<dialog id="dlgInv">
+  <form id="formInv">
+    <h2 id="invTitle">Nouvelle pièce</h2>
+    <div class="row2">
+      <div class="field"><label for="i-type">Type de produit</label><select id="i-type"></select></div>
+      <div class="field"><label>Numéro d’inventaire</label><span class="numprev" id="i-num">—</span></div>
+    </div>
+    <div class="field"><label for="i-bois">Type de bois</label>
+      <input id="i-bois" list="dl-bois" required autocomplete="off" placeholder="Choisir ou écrire"></div>
+    <datalist id="dl-bois"></datalist>
+    <div class="row2">
+      <div class="field"><label for="i-prix">Prix ($)</label><input id="i-prix" type="number" step="0.01" min="0" inputmode="decimal"></div>
+      <div class="field"><label for="i-coupe">Date de coupe du bois</label><input id="i-coupe" type="date"></div>
+    </div>
+    <div class="field"><label for="i-loc">Location d’entreposage</label>
+      <input id="i-loc" list="dl-loc" autocomplete="off" placeholder="ex. Étagère A, bac 3"></div>
+    <datalist id="dl-loc"></datalist>
+    <div class="field"><label for="i-fourn">Fournisseur</label><input id="i-fourn"></div>
+    <div class="field"><label for="i-fact">Lien de la facture (optionnel)</label><input id="i-fact" type="url" inputmode="url" placeholder="https://"></div>
+    <div class="field">
+      <label for="i-files">Facture d’achat (photo, PDF)</label>
+      <ul class="doclist" id="invDocList"></ul>
+      <input id="i-files" type="file" accept="image/*,application/pdf" multiple>
+      <span class="docnote">Les fichiers vont dans Drive : Inventaire / <span id="i-folderName">…</span>. <a id="invFolderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
+    </div>
+    <div class="field"><label for="i-notes">Notes</label><textarea id="i-notes" rows="2"></textarea></div>
+    <div class="field check"><input id="i-used" type="checkbox"><label for="i-used">Pièce utilisée (plus en stock)</label></div>
+    <div class="actions">
+      <button class="btn danger left" type="button" id="invDel" hidden>Supprimer</button>
+      <button class="btn" type="button" id="invCancel">Annuler</button>
+      <button class="btn primary" type="submit" id="invSave">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 /* ============ Configuration ============ */
 // Colle ici l’ID client OAuth créé dans Google Cloud Console (type « Application Web »).
@@ -239,13 +305,23 @@ const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
 const EVENTS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
+// Inventaire des pièces
+const INV_SHEET = 'Inventaire';
+const INV_FOLDER = 'Inventaire';
+const INV_HEADERS = ['numero','type','bois','prix','entreposage','date_coupe','fournisseur','lien_facture','documents','notes','utilise','date_ajout'];
+const PIECES = { T: 'Touche', PT: 'Plaque de tête', TH: 'Table d’harmonie', DE: 'Dos Éclisses', M: 'Manche', B: 'Beam' };
+const WOODS = ['Ébène', 'Palissandre', 'Wengé', 'Cèdre rouge', 'Épinette', 'Érable', 'Acajou', 'Noyer', 'Koa', 'Cerisier'];
+
 /* ============ État ============ */
 let tokenClient = null, accessToken = null, tokenExpiry = 0;
 let sheetId = localStorage.getItem('sheetId') || '';
 let folderId = localStorage.getItem('folderId') || '';
-let sheetGid = null;
+const gids = {};
 let tasks = [], cat = 'all', view = 'all', showDone = false;
-let mode = localStorage.getItem('mode') === 'cal' ? 'cal' : 'list';
+let mode = ['cal', 'inv'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
+let inv = [], invType = 'all', invQuery = '', showUsed = false;
+let invEditing = null, invDocs = [], invPending = [];
+let invFolders = (() => { try { return JSON.parse(localStorage.getItem('invFolders') || '{}'); } catch { return {}; } })();
 let editing = null, formDocs = [], pendingFiles = [];
 let weekStart = '', calSeq = 0;
 let hStart = Number(localStorage.getItem('hStart') || 8);
@@ -264,7 +340,11 @@ const fmtTime = d => d.toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2
 const fmtDur = min => { min = Math.round(min); const h = Math.floor(min / 60), r = min % 60; return !h ? r + ' min' : r ? `${h} h ${pad(r)}` : `${h} h`; };
 const colLetter = i => String.fromCharCode(65 + i);
 const LAST_COL = colLetter(HEADERS.length - 1);
-const range = r => encodeURIComponent(`'${SHEET_TITLE}'!${r}`);
+const INV_LAST = colLetter(INV_HEADERS.length - 1);
+const rangeIn = (title, r) => encodeURIComponent(`'${title}'!${r}`);
+const range = r => rangeIn(SHEET_TITLE, r);
+const money = v => Number(v).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
+const qEsc = s => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const safeUrl = u => /^https?:\/\//i.test(u || '') ? u : '';
 const say = (t = '', info = false) => { $('#msg').textContent = t; $('#msg').className = info ? 'info' : ''; };
 const fail = e => { console.error(e); say('Erreur : ' + (e.message || e)); };
@@ -303,9 +383,11 @@ async function connect() {
     await getToken();
     await ensureSheet();
     await ensureHeaders();
+    await ensureInvSheet();
     $('#signedOut').hidden = true; $('#app').hidden = false;
     $('#auth').textContent = 'Déconnexion';
-    await load();
+    await Promise.all([load(), loadInv()]);
+    ensureInvFolders().catch(fail); // crée Inventaire/ et ses sous-dossiers la première fois
   } catch (e) { fail(e); }
 }
 
@@ -345,12 +427,38 @@ async function shrink(file) {
   return new Promise((res, rej) => c.toBlob(b => (b ? res(b) : rej(new Error('compression'))), 'image/jpeg', 0.85));
 }
 
-async function uploadDoc(file, o, parent) {
+// Trouve (ou crée) un dossier par nom, éventuellement dans un dossier parent.
+async function driveFolder(name, parent) {
+  let q = `name='${qEsc(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  if (parent) q += ` and '${parent}' in parents`;
+  let id = await findDrive(q);
+  if (!id) {
+    const body = { name, mimeType: 'application/vnd.google-apps.folder' };
+    if (parent) body.parents = [parent];
+    id = (await api(DRIVE, { method: 'POST', body: JSON.stringify(body) })).id;
+  }
+  return id;
+}
+
+const invFolderName = code => `${code} - ${PIECES[code]}`;
+
+async function ensureInvFolder(code) {
+  if (!invFolders.root) invFolders.root = await driveFolder(INV_FOLDER);
+  if (code && !invFolders[code]) invFolders[code] = await driveFolder(invFolderName(code), invFolders.root);
+  localStorage.setItem('invFolders', JSON.stringify(invFolders));
+  return code ? invFolders[code] : invFolders.root;
+}
+
+async function ensureInvFolders() {
+  for (const code of Object.keys(PIECES)) await ensureInvFolder(code);
+}
+
+async function uploadDoc(file, prefix, parent) {
   let blob = file, name = file.name || 'photo.jpg', type = file.type || 'application/octet-stream';
   if (type.startsWith('image/') && file.size > 1.5e6) {
     try { blob = await shrink(file); name = name.replace(/\.[^.]+$/, '') + '.jpg'; type = 'image/jpeg'; } catch { /* envoi de l’original */ }
   }
-  const meta = { name: `${o.echeance || ymd(new Date())} - ${o.titre} - ${name}`.slice(0, 200), parents: [parent] };
+  const meta = { name: `${prefix} - ${name}`.slice(0, 200), parents: [parent] };
   const b = 'luthier' + Date.now();
   const body = new Blob([
     `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n`,
@@ -386,21 +494,81 @@ async function ensureHeaders() {
   }
 }
 
-async function getGid() {
-  if (sheetGid !== null) return sheetGid;
+async function readGids() {
   const d = await api(`${SHEETS}/${sheetId}?fields=sheets.properties`);
-  const s = d.sheets.find(x => x.properties.title === SHEET_TITLE);
-  if (!s) throw new Error('Onglet « ' + SHEET_TITLE + ' » introuvable.');
-  sheetGid = s.properties.sheetId;
-  return sheetGid;
+  d.sheets.forEach(x => { gids[x.properties.title] = x.properties.sheetId; });
 }
 
-// Retrouve la ligne actuelle d’une tâche par son id (sûr même si un autre appareil a supprimé une ligne).
-async function findRow(id) {
-  const d = await api(`${SHEETS}/${sheetId}/values/${range('A:A')}`);
+async function getGid(title = SHEET_TITLE) {
+  if (gids[title] === undefined) await readGids();
+  if (gids[title] === undefined) throw new Error('Onglet « ' + title + ' » introuvable.');
+  return gids[title];
+}
+
+async function deleteRow(title, r) {
+  const gid = await getGid(title);
+  await api(`${SHEETS}/${sheetId}:batchUpdate`, {
+    method: 'POST', body: JSON.stringify({ requests: [{ deleteDimension: {
+      range: { sheetId: gid, dimension: 'ROWS', startIndex: r - 1, endIndex: r }
+    } }] })
+  });
+}
+
+// Retrouve la ligne actuelle par l’identifiant de la colonne A (sûr même si un autre appareil a supprimé une ligne).
+async function findRow(id, title = SHEET_TITLE) {
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(title, 'A:A')}`);
   const i = (d.values || []).findIndex(r => r[0] === id);
-  if (i < 1) throw new Error('Tâche introuvable dans la feuille. Touche « Actualiser ».');
+  if (i < 1) throw new Error('Élément introuvable dans la feuille. Touche « Actualiser ».');
   return i + 1;
+}
+
+/* ============ Inventaire (onglet « Inventaire » du même classeur) ============ */
+async function ensureInvSheet() {
+  await readGids();
+  if (gids[INV_SHEET] === undefined) {
+    const r = await api(`${SHEETS}/${sheetId}:batchUpdate`, {
+      method: 'POST', body: JSON.stringify({ requests: [{ addSheet: { properties: { title: INV_SHEET } } }] })
+    });
+    gids[INV_SHEET] = r.replies[0].addSheet.properties.sheetId;
+  }
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A1:${INV_LAST}1`)}`);
+  if (((d.values && d.values[0]) || []).length < INV_HEADERS.length) {
+    await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A1:${INV_LAST}1`)}?valueInputOption=RAW`, {
+      method: 'PUT', body: JSON.stringify({ values: [INV_HEADERS] })
+    });
+  }
+}
+
+async function loadInv() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A2:${INV_LAST}`)}`);
+  inv = (d.values || []).map(row => {
+    const o = {};
+    INV_HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
+    return o;
+  }).filter(p => p.numero);
+  if (mode === 'inv') renderInv();
+}
+
+// Prochain numéro libre pour un type : PT001, PT002… (TH001 n’est pas compté comme T)
+function nextNumber(code) {
+  const re = new RegExp('^' + code + '(\\d+)$');
+  const max = inv.reduce((m, p) => { const x = re.exec(p.numero); return x ? Math.max(m, Number(x[1])) : m; }, 0);
+  return code + String(max + 1).padStart(3, '0');
+}
+
+const invRow = p => INV_HEADERS.map(h => p[h] ?? '');
+
+async function addPiece(p) {
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A:${INV_LAST}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: [invRow(p)] })
+  });
+}
+
+async function updatePiece(p) {
+  const r = await findRow(p.numero, INV_SHEET);
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(INV_SHEET, `A${r}:${INV_LAST}${r}`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [invRow(p)] })
+  });
 }
 
 async function load() {
@@ -429,13 +597,7 @@ async function updateTask(o) {
 }
 
 async function deleteTask(t) {
-  const r = await findRow(t.id);
-  const gid = await getGid();
-  await api(`${SHEETS}/${sheetId}:batchUpdate`, {
-    method: 'POST', body: JSON.stringify({ requests: [{ deleteDimension: {
-      range: { sheetId: gid, dimension: 'ROWS', startIndex: r - 1, endIndex: r }
-    } }] })
-  });
+  await deleteRow(SHEET_TITLE, await findRow(t.id));
   if (t.event_id) await deleteEvent(t.event_id);
 }
 
@@ -504,6 +666,17 @@ function buildNav() {
   document.querySelectorAll('#mode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.m === mode)));
   $('#listView').hidden = mode !== 'list';
   $('#calView').hidden = mode !== 'cal';
+  $('#invView').hidden = mode !== 'inv';
+  $('#tabs').hidden = mode === 'inv';
+
+  const it = $('#invTypes'); it.textContent = '';
+  [['all', 'Tous'], ...Object.entries(PIECES).map(([k, v]) => [k, `${v} (${k})`])].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(invType === k));
+    b.onclick = () => { invType = k; buildNav(); renderInv(); };
+    it.appendChild(b);
+  });
 }
 
 function link(href, text) {
@@ -514,6 +687,7 @@ function link(href, text) {
 
 function render() {
   if (mode === 'cal') { renderCalendar(); return; }
+  if (mode === 'inv') { renderInv(); return; }
   const list = $('#list'); list.textContent = '';
   const today = ymd(new Date());
   const items = tasks.filter(t => {
@@ -614,7 +788,8 @@ async function renderCalendar() {
     const ws = toDate(ds); ws.setHours(hStart);
     const we = toDate(ds); we.setHours(hEnd);
     const past = we <= now;
-    const from = ds === today && now > ws ? now : ws;
+    const q = 15 * 60000, nowQ = new Date(Math.ceil(now / q) * q); // arrondi au quart d’heure suivant
+    const from = ds === today && nowQ > ws ? (nowQ < we ? nowQ : we) : ws;
     const span = we - ws;
 
     // Plages occupées pendant les heures d’atelier, fusionnées
@@ -713,6 +888,167 @@ async function renderCalendar() {
   sum.append('Temps libre à l’atelier : ', s1, ' · Tâches à échéance : ', s2);
 }
 
+/* ============ Inventaire : affichage ============ */
+function renderInv() {
+  const list = $('#invList'); list.textContent = '';
+  const q = invQuery.trim().toLowerCase();
+  const order = Object.keys(PIECES);
+  const items = inv.filter(p => {
+    if (invType !== 'all' && p.type !== invType) return false;
+    if (!showUsed && p.utilise === 'oui') return false;
+    if (q && ![p.numero, p.bois, p.entreposage, p.fournisseur, p.notes, PIECES[p.type]].join(' ').toLowerCase().includes(q)) return false;
+    return true;
+  }).sort((a, b) => (order.indexOf(a.type) - order.indexOf(b.type)) || a.numero.localeCompare(b.numero, 'fr', { numeric: true }));
+
+  const inStock = items.filter(p => p.utilise !== 'oui');
+  const value = inStock.reduce((s, p) => s + (Number(p.prix) || 0), 0);
+  const sum = $('#invSum'); sum.textContent = '';
+  const s1 = document.createElement('strong'); s1.textContent = String(inStock.length);
+  const s2 = document.createElement('strong'); s2.textContent = money(value);
+  sum.append(s1, inStock.length > 1 ? ' pièces en stock · valeur ' : ' pièce en stock · valeur ', s2);
+
+  if (!items.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.innerHTML = '<p>Aucune pièce ici. Touche « Ajouter » pour en inscrire une.</p>';
+    list.appendChild(li); return;
+  }
+
+  items.forEach(p => {
+    const li = document.createElement('li');
+    li.className = 'piece' + (p.utilise === 'oui' ? ' used' : '');
+    const body = document.createElement('div'); body.className = 'body';
+    body.onclick = e => { if (!e.target.closest('a')) openInv(p); };
+
+    const head = document.createElement('div');
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = p.numero;
+    const kind = document.createElement('span'); kind.className = 'kind'; kind.textContent = PIECES[p.type] || p.type;
+    head.append(num, kind);
+    const wood = document.createElement('div'); wood.className = 'wood'; wood.textContent = p.bois;
+    body.append(head, wood);
+
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); };
+    if (p.prix) add(money(p.prix));
+    if (p.entreposage) add('Entreposage : ' + p.entreposage);
+    if (p.date_coupe) add('Coupé le ' + toDate(p.date_coupe).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }));
+    if (p.fournisseur) add(p.fournisseur);
+    if (p.utilise === 'oui') add('Utilisée');
+    if (safeUrl(p.lien_facture)) meta.appendChild(link(p.lien_facture, 'Facture'));
+    parseDocs(p.documents).forEach(d => meta.appendChild(link(d.url, d.name || 'Facture')));
+    body.appendChild(meta);
+
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'btn small'; edit.textContent = 'Modifier';
+    edit.setAttribute('aria-label', 'Modifier ' + p.numero);
+    edit.onclick = () => openInv(p);
+
+    li.append(body, edit);
+    list.appendChild(li);
+  });
+}
+
+/* ============ Inventaire : formulaire ============ */
+function fillDatalist(id, values) {
+  const dl = $(id); dl.textContent = '';
+  [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'fr')).forEach(v => dl.appendChild(new Option(v)));
+}
+
+function syncInvType() {
+  const code = $('#i-type').value;
+  $('#i-num').textContent = invEditing ? invEditing.numero : nextNumber(code) + ' (prévu)';
+  $('#i-folderName').textContent = invFolderName(code);
+  const fl = $('#invFolderLink'), id = invFolders[code];
+  fl.hidden = !id;
+  if (id) fl.href = 'https://drive.google.com/drive/folders/' + id;
+}
+
+function renderInvDocs() {
+  const ul = $('#invDocList'); ul.textContent = '';
+  const row = (content, onRemove) => {
+    const li = document.createElement('li');
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer'; rm.onclick = onRemove;
+    li.append(content, rm); ul.appendChild(li);
+  };
+  invDocs.forEach((d, i) => row(link(d.url, d.name || 'Facture'), () => { invDocs.splice(i, 1); renderInvDocs(); }));
+  invPending.forEach((f, i) => {
+    const s = document.createElement('span'); s.className = 'pending'; s.textContent = f.name + ' (à téléverser)';
+    row(s, () => { invPending.splice(i, 1); renderInvDocs(); });
+  });
+}
+
+function openInv(p = null) {
+  invEditing = p;
+  $('#formInv').reset();
+  $('#invTitle').textContent = p ? 'Modifier la pièce' : 'Nouvelle pièce';
+  $('#invDel').hidden = !p;
+  const sel = $('#i-type'); sel.textContent = '';
+  Object.entries(PIECES).forEach(([k, v]) => sel.add(new Option(`${v} (${k})`, k)));
+  sel.value = p ? p.type : (invType !== 'all' ? invType : 'T');
+  sel.disabled = !!p; // le numéro dépend du type : on ne change pas le type d’une pièce existante
+  fillDatalist('#dl-bois', [...WOODS, ...inv.map(x => x.bois)]);
+  fillDatalist('#dl-loc', inv.map(x => x.entreposage));
+  if (p) {
+    $('#i-bois').value = p.bois; $('#i-prix').value = p.prix; $('#i-coupe').value = p.date_coupe;
+    $('#i-loc').value = p.entreposage; $('#i-fourn').value = p.fournisseur; $('#i-fact').value = p.lien_facture;
+    $('#i-notes').value = p.notes; $('#i-used').checked = p.utilise === 'oui';
+  }
+  invDocs = parseDocs(p && p.documents);
+  invPending = [];
+  syncInvType(); renderInvDocs();
+  $('#dlgInv').showModal();
+}
+
+$('#i-type').onchange = syncInvType;
+$('#i-files').onchange = e => { invPending.push(...e.target.files); e.target.value = ''; renderInvDocs(); };
+$('#invCancel').onclick = () => $('#dlgInv').close();
+
+$('#invDel').onclick = async () => {
+  const p = invEditing;
+  if (!p || !confirm(`Supprimer ${p.numero} de l’inventaire ?\nAstuce : coche plutôt « Pièce utilisée » pour garder l’historique. Les factures restent dans Drive.`)) return;
+  $('#invDel').disabled = true; say();
+  try { await deleteRow(INV_SHEET, await findRow(p.numero, INV_SHEET)); $('#dlgInv').close(); await loadInv(); }
+  catch (e) { fail(e); }
+  $('#invDel').disabled = false;
+};
+
+$('#formInv').onsubmit = async ev => {
+  ev.preventDefault();
+  $('#invSave').disabled = true; say();
+  try {
+    const code = $('#i-type').value;
+    let numero = invEditing && invEditing.numero;
+    if (!numero) { await loadInv(); numero = nextNumber(code); } // relit la feuille pour éviter un doublon entre appareils
+    const p = {
+      numero, type: code,
+      bois: $('#i-bois').value.trim(), prix: $('#i-prix').value,
+      entreposage: $('#i-loc').value.trim(), date_coupe: $('#i-coupe').value,
+      fournisseur: $('#i-fourn').value.trim(), lien_facture: $('#i-fact').value.trim(),
+      documents: '', notes: $('#i-notes').value.trim(),
+      utilise: $('#i-used').checked ? 'oui' : '',
+      date_ajout: invEditing ? invEditing.date_ajout : ymd(new Date())
+    };
+    if (invPending.length) {
+      const parent = await ensureInvFolder(code);
+      for (let i = 0; i < invPending.length; i++) {
+        say(`Téléversement ${i + 1} / ${invPending.length}…`, true);
+        invDocs.push(await uploadDoc(invPending[i], `${numero} - ${p.bois}`, parent));
+      }
+      invPending = []; renderInvDocs(); say();
+    }
+    p.documents = invDocs.length ? JSON.stringify(invDocs) : '';
+    if (invEditing) await updatePiece(p); else await addPiece(p);
+    $('#dlgInv').close();
+    await loadInv();
+    if (!invEditing) say(`Pièce ${numero} ajoutée.`, true);
+  } catch (e) { fail(e); }
+  $('#invSave').disabled = false;
+};
+
+$('#invSearch').oninput = e => { invQuery = e.target.value; renderInv(); };
+$('#showUsed').onchange = e => { showUsed = e.target.checked; renderInv(); };
+$('#invReload').onclick = () => loadInv().catch(fail);
+
 /* ============ Formulaire ============ */
 function syncFormFields() {
   const type = $('#f-type').value;
@@ -760,7 +1096,7 @@ function openForm(t = null) {
 
 $('#f-type').onchange = syncFormFields;
 $('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
-$('#add').onclick = () => openForm();
+$('#add').onclick = () => (mode === 'inv' ? openInv() : openForm());
 $('#cancel').onclick = () => $('#dlg').close();
 
 $('#del').onclick = async () => {
@@ -790,7 +1126,7 @@ $('#form').onsubmit = async ev => {
       const parent = await ensureFolder();
       for (let i = 0; i < pendingFiles.length; i++) {
         say(`Téléversement ${i + 1} / ${pendingFiles.length}…`, true);
-        formDocs.push(await uploadDoc(pendingFiles[i], o, parent));
+        formDocs.push(await uploadDoc(pendingFiles[i], `${o.echeance || ymd(new Date())} - ${o.titre}`, parent));
       }
       pendingFiles = []; renderDocList(); say();
     }
