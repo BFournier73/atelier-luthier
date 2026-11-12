@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Tâches">
+<meta name="apple-mobile-web-app-title" content="Atelier Samson">
 <meta name="theme-color" content="#0f5c5c">
 <meta name="color-scheme" content="light dark">
-<title>Mes tâches</title>
+<title>Atelier Samson</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -155,6 +155,8 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
 .piece .corg { color: var(--muted); font-size: .92rem; }
 .selrow { display: flex; gap: 8px; }
 .selrow select { flex: 1; min-width: 0; }
+.datehint { color: var(--muted); font-size: .8rem; margin: -4px 0 8px; }
+.datehint.warn { color: var(--danger); }
 
 /* ---- Guitares ---- */
 ul#gtrList { list-style: none; margin: 0; padding: 0; }
@@ -188,14 +190,14 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
 <body>
 <div class="wrap">
   <header>
-    <h1>Mes tâches</h1>
+    <h1>Atelier Samson</h1>
     <button class="btn" id="auth" type="button">Connexion Google</button>
   </header>
   <p id="msg" role="status"></p>
 
   <div id="app" hidden>
     <div class="seg" id="mode" role="group" aria-label="Affichage">
-      <button type="button" data-m="list">Liste</button>
+      <button type="button" data-m="list">To Do</button>
       <button type="button" data-m="cal">Calendrier</button>
       <button type="button" data-m="inv">Inventaire</button>
       <button type="button" data-m="cli">Clients</button>
@@ -279,26 +281,32 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
     <div class="field"><label for="f-type">Catégorie</label>
       <select id="f-type">
         <option value="globale">Globales</option>
-        <option value="instrument">Instruments</option>
+        <option value="instrument">Guitares</option>
+        <option value="reparation">Réparations</option>
         <option value="perso">Perso</option>
-        <option value="reparation">Réparation</option>
       </select></div>
     <div class="field"><label for="f-titre">Titre</label><input id="f-titre" required></div>
     <div class="field"><label for="f-desc">Description</label><textarea id="f-desc" rows="2"></textarea></div>
     <div class="field"><label for="f-lien">Lien</label><input id="f-lien" type="url" inputmode="url" placeholder="https://"></div>
     <div class="row2">
-      <div class="field"><label for="f-date">Date d’échéance</label><input id="f-date" type="date"></div>
-      <div class="field"><label for="f-rec">Récurrence</label>
+      <div class="field"><label for="f-debut">Date de début</label><input id="f-debut" type="date" min="2000-01-01" max="2099-12-31"></div>
+      <div class="field"><label for="f-date">Date d’échéance</label><input id="f-date" type="date" min="2000-01-01" max="2099-12-31"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="f-duree">Durée planifiée</label><input id="f-duree" type="number" min="0" step="0.5" inputmode="decimal" placeholder="ex. 3"></div>
+      <div class="field"><label for="f-unite">Unité</label>
+        <select id="f-unite"><option value="heures">heures</option><option value="jours" selected>jours</option><option value="semaines">semaines</option></select></div>
+    </div>
+    <div class="field"><label for="f-rec">Récurrence</label>
         <select id="f-rec">
           <option value="">Aucune</option>
           <option value="quotidienne">Quotidienne</option>
           <option value="hebdomadaire">Hebdomadaire</option>
           <option value="mensuelle">Mensuelle</option>
         </select></div>
-    </div>
     <div class="field" id="w-client" hidden><label for="f-client">Client</label>
       <div class="selrow"><select id="f-client"></select><button class="btn small" type="button" id="f-newClient">Nouveau client</button></div></div>
-    <div class="field" id="w-instrument" hidden><label for="f-instrument">Instrument</label><input id="f-instrument"></div>
+    <div class="field" id="w-instrument" hidden><label for="f-instrument">Guitare</label><input id="f-instrument"></div>
     <div class="row2" id="w-cout">
       <div class="field"><label for="f-cout">Coût ($)</label><input id="f-cout" type="number" step="0.01" inputmode="decimal"></div>
       <div class="field"><label for="f-fact">Lien de la facture</label><input id="f-fact" type="url" inputmode="url" placeholder="https://"></div>
@@ -450,9 +458,9 @@ const SCOPES = [
 const SPREADSHEET_NAME = 'App Tâches';
 const SHEET_TITLE = 'Tâches';
 const FOLDER_NAME = 'Factures + Documents';
-const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client'];
+const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client','debut','duree','duree_unite'];
 const CLIENT_TYPES = ['reparation', 'instrument']; // catégories où l’on choisit un client
-const TYPES = { globale: 'Globales', instrument: 'Instruments', perso: 'Perso', reparation: 'Réparation' };
+const TYPES = { globale: 'Globales', instrument: 'Guitares', reparation: 'Réparations', perso: 'Perso' }; // ordre des onglets
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -504,7 +512,16 @@ const toDate = s => { const [y, m, d] = s.split('-').map(Number); return new Dat
 const addDays = (s, n) => { const d = toDate(s); d.setDate(d.getDate() + n); return ymd(d); };
 const endOfMonth = s => { const [y, m] = s.split('-').map(Number); return ymd(new Date(y, m, 0)); };
 const monday = d => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return ymd(x); };
-const fmtDate = s => toDate(s).toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short' });
+const isYmd = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '') && ymd(toDate(s)) === s; // vraie date AAAA-MM-JJ
+const fmtDate = s => {
+  if (!isYmd(s)) return s ? s + ' (date invalide)' : '';
+  const d = toDate(s), o = { weekday: 'short', day: 'numeric', month: 'short' };
+  if (d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric'; // ex. « jeu. 11 nov. 2027 »
+  return d.toLocaleDateString('fr-CA', o);
+};
+const UNITES = { heures: ['heure', 'heures'], jours: ['jour', 'jours'], semaines: ['semaine', 'semaines'] };
+const fmtDuree = (n, u) => { if (!n) return ''; const w = UNITES[u] || UNITES.jours; const v = Number(n); return v.toLocaleString('fr-CA') + ' ' + (v > 1 ? w[1] : w[0]); };
+const dureeJours = (n, u) => u === 'semaines' ? Number(n) * 7 : u === 'heures' ? 0 : Number(n);
 const fmtTime = d => d.toLocaleTimeString('fr-CA', { hour: 'numeric', minute: '2-digit' });
 const fmtDur = min => { min = Math.round(min); const h = Math.floor(min / 60), r = min % 60; return !h ? r + ' min' : r ? `${h} h ${pad(r)}` : `${h} h`; };
 const colLetter = i => String.fromCharCode(65 + i);
@@ -795,7 +812,7 @@ function eventBody(o) {
   const docs = parseDocs(o.documents).map(d => d.url);
   const body = {
     summary: `[${TYPES[o.type]}] ${o.titre}`,
-    description: [clientLine(o.client), o.description, o.lien, ...docs].filter(Boolean).join('\n'),
+    description: [clientLine(o.client), o.debut ? 'Début : ' + fmtDate(o.debut) : '', o.duree ? 'Durée planifiée : ' + fmtDuree(o.duree, o.duree_unite) : '', o.description, o.lien, ...docs].filter(Boolean).join('\n'),
     start: { date: o.echeance },
     end: { date: addDays(o.echeance, 1) }
   };
@@ -888,7 +905,7 @@ function render() {
     if (view === 'week') return t.echeance && t.echeance <= addDays(today, 7);
     if (view === 'month') return t.echeance && t.echeance <= endOfMonth(today);
     return true;
-  }).sort((a, b) => (a.echeance || '9999').localeCompare(b.echeance || '9999'));
+  }).sort((a, b) => (isYmd(a.echeance) ? a.echeance : '9999').localeCompare(isYmd(b.echeance) ? b.echeance : '9999') || (a.debut || '9999').localeCompare(b.debut || '9999'));
 
   if (!items.length) {
     const li = document.createElement('li'); li.className = 'empty';
@@ -914,7 +931,9 @@ function render() {
 
     const meta = document.createElement('div'); meta.className = 'meta';
     const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); return s; };
-    if (t.echeance) add(fmtDate(t.echeance)).classList.add('due');
+    if (t.debut) add('Début : ' + fmtDate(t.debut));
+    if (t.echeance) add((t.debut ? 'Échéance : ' : '') + fmtDate(t.echeance)).classList.add('due');
+    if (t.duree) add('⏱ ' + fmtDuree(t.duree, t.duree_unite));
     if (t.recurrence) add('↻ ' + t.recurrence);
     if (t.client) add('Client : ' + clientName(t.client));
     if (t.instrument) add(t.instrument);
@@ -1509,7 +1528,7 @@ function openClient(c = null) {
       wrap.appendChild(b);
     });
     const sc = document.createElement('div'); sc.className = 'shortcuts';
-    [['reparation', '+ Réparation'], ['instrument', '+ Instrument']].forEach(([type, label]) => {
+    [['reparation', '+ Réparation'], ['instrument', '+ Guitare']].forEach(([type, label]) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = label;
       b.onclick = () => { $('#dlgCli').close(); openFormFor(type, c.numero); };
       sc.appendChild(b);
@@ -1937,7 +1956,9 @@ function openForm(t = null) {
   if (t) {
     $('#f-type').value = t.type || 'globale';
     $('#f-titre').value = t.titre; $('#f-desc').value = t.description; $('#f-lien').value = t.lien;
-    $('#f-date').value = t.echeance; $('#f-rec').value = t.recurrence;
+    $('#f-date').value = isYmd(t.echeance) ? t.echeance : ''; $('#f-rec').value = t.recurrence;
+    $('#f-debut').value = isYmd(t.debut) ? t.debut : ''; $('#f-duree').value = t.duree;
+    $('#f-unite').value = UNITES[t.duree_unite] ? t.duree_unite : 'jours';
     $('#f-instrument').value = t.instrument; $('#f-cout').value = t.cout; $('#f-fact').value = t.lien_facture;
     $('#f-cal').checked = !!t.event_id;
   } else {
@@ -1946,7 +1967,7 @@ function openForm(t = null) {
   fillClientSelect(t ? t.client : '');
   formDocs = parseDocs(t && t.documents);
   pendingFiles = [];
-  syncFormFields(); renderDocList();
+  syncFormFields(); renderDocList(); dateHint();
   $('#dlg').showModal();
 }
 
@@ -1957,6 +1978,41 @@ function openFormFor(type, client) {
 }
 
 $('#f-type').onchange = syncFormFields;
+
+// Aide sous les dates : fin prévue selon début + durée, et incohérences.
+function dateHint() {
+  let h = $('#dateHint');
+  if (!h) { h = document.createElement('p'); h.id = 'dateHint'; h.className = 'datehint'; $('#f-duree').closest('.row2').after(h); }
+  const deb = $('#f-debut').value, ech = $('#f-date').value, n = Number($('#f-duree').value), u = $('#f-unite').value;
+  let txt = '', warn = false;
+  if (deb && ech && ech < deb) { txt = 'L’échéance est avant la date de début.'; warn = true; }
+  else if (deb && n > 0 && u !== 'heures') {
+    const fin = addDays(deb, Math.max(0, Math.ceil(dureeJours(n, u)) - 1));
+    txt = 'Fin prévue : ' + fmtDate(fin);
+    if (ech && fin > ech) { txt += ' — après l’échéance.'; warn = true; }
+  }
+  h.textContent = txt; h.hidden = !txt; h.classList.toggle('warn', warn);
+}
+['#f-debut', '#f-date', '#f-duree', '#f-unite'].forEach(id => $(id).addEventListener('input', dateHint));
+// Échéance vide : on la propose à partir du début + durée.
+$('#f-duree').addEventListener('change', () => {
+  const deb = $('#f-debut').value, n = Number($('#f-duree').value), u = $('#f-unite').value;
+  if (deb && n > 0 && !$('#f-date').value) { $('#f-date').value = addDays(deb, Math.max(0, Math.ceil(dureeJours(n, u)) - 1)); dateHint(); }
+});
+
+// Retourne un message d’erreur, ou '' si les dates sont valides. Demande confirmation pour les dates inhabituelles.
+function checkDates(o) {
+  for (const [k, label] of [['debut', 'date de début'], ['echeance', 'date d’échéance']]) {
+    if (o[k] && !isYmd(o[k])) return `La ${label} est invalide.`;
+    if (o[k] && (o[k] < '2000-01-01' || o[k] > '2099-12-31')) return `La ${label} (${o[k]}) est hors limites.`;
+  }
+  if (o.debut && o.echeance && o.echeance < o.debut) return 'L’échéance doit être le même jour ou après la date de début.';
+  if (o.duree !== '' && !(Number(o.duree) > 0)) return 'La durée planifiée doit être un nombre plus grand que 0.';
+  const today = ymd(new Date()), loin = addDays(today, 365);
+  const odd = [o.debut, o.echeance].filter(d => d && d > loin);
+  if (odd.length && !confirm(`La date ${fmtDate(odd[0])} est dans plus d’un an. Est-ce bien voulu ?`)) return ' '; // annulé : pas de message
+  return '';
+}
 $('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
 $('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : mode === 'gtr' ? openGuitar() : openForm());
 $('#f-newClient').onclick = () => { cliReturn = '#f-client'; openClient(); };
@@ -1978,6 +2034,8 @@ $('#form').onsubmit = async ev => {
     id: editing ? editing.id : crypto.randomUUID().slice(0, 8), type,
     titre: $('#f-titre').value.trim(), description: $('#f-desc').value.trim(),
     lien: $('#f-lien').value.trim(), echeance: $('#f-date').value,
+    debut: $('#f-debut').value, duree: $('#f-duree').value.trim(),
+    duree_unite: $('#f-duree').value.trim() ? $('#f-unite').value : '',
     recurrence: $('#f-rec').value,
     cout: type === 'perso' ? '' : $('#f-cout').value,
     lien_facture: type === 'perso' ? '' : $('#f-fact').value.trim(),
@@ -1985,6 +2043,8 @@ $('#form').onsubmit = async ev => {
     client: CLIENT_TYPES.includes(type) ? $('#f-client').value : '',
     fait: editing ? editing.fait : '', event_id: editing ? editing.event_id : '', documents: ''
   };
+  const bad = checkDates(o);
+  if (bad) { if (bad.trim()) alert(bad); return; }
   $('#save').disabled = true; say();
   try {
     if (pendingFiles.length) {
