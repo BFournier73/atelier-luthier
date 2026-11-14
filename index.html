@@ -337,7 +337,7 @@ ul#gtrList, ul#repList { list-style: none; margin: 0; padding: 0; }
       <div class="field"><label for="f-fact">Lien de la facture</label><input id="f-fact" type="url" inputmode="url" placeholder="https://"></div>
     </div>
     <div class="field">
-      <label for="f-files">Factures et documents (photos, PDF)</label>
+      <label for="f-files">Factures achat et documents (photos, PDF)</label>
       <ul class="doclist" id="docList"></ul>
       <input id="f-files" type="file" accept="image/*,application/pdf" multiple>
       <span class="docnote">Les fichiers vont dans le dossier Drive « Factures + Documents ». <a id="folderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
@@ -2326,8 +2326,9 @@ function renderDocList() {
   if (folderId) fl.href = 'https://drive.google.com/drive/folders/' + folderId;
 }
 
+let autoTitle = '';
 function openForm(t = null) {
-  editing = t;
+  editing = t; autoTitle = '';
   $('#form').reset();
   $('#dlgTitle').textContent = t ? 'Modifier la tâche' : 'Nouvelle tâche';
   $('#del').hidden = !t;
@@ -2356,7 +2357,14 @@ function openForm(t = null) {
 // Ouvre la tâche avec une catégorie et un client déjà choisis (depuis la fiche client).
 function openFormFor(type, client = '', projet = '') {
   openForm();
-  $('#f-type').value = type; fillClientSelect(client); fillProjetSelect(type, projet); syncFormFields();
+  $('#f-type').value = type; fillClientSelect(client); fillProjetSelect(type, projet); syncFormFields(); autoTitre();
+}
+
+// Nouvelle tâche d’une réparation : le titre reprend le libellé de la réparation (modifiable).
+function autoTitre() {
+  if (editing || $('#f-type').value !== 'reparation' || !$('#f-projet').value) return;
+  const cur = $('#f-titre').value;
+  if (cur === '' || cur === autoTitle) { autoTitle = $('#f-projet').selectedOptions[0].text; $('#f-titre').value = autoTitle; }
 }
 
 // Liste des guitares (G…) ou des réparations (R…) pour lier une tâche. Les livrées sont cachées sauf si déjà choisies.
@@ -2378,6 +2386,7 @@ function fillProjetSelect(type, selected = '') {
 $('#f-projet').onchange = () => {
   const n = $('#f-projet').value, x = findGuitar(n) || findRepair(n);
   if (x && x.client && !$('#f-client').value) fillClientSelect(x.client);
+  autoTitre();
 };
 
 $('#f-type').onchange = syncFormFields;
