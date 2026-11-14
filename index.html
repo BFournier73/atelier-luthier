@@ -159,7 +159,14 @@ ul#invList, ul#cliList { list-style: none; margin: 0; padding: 0; }
 .datehint.warn { color: var(--danger); }
 
 /* ---- Guitares ---- */
-ul#gtrList { list-style: none; margin: 0; padding: 0; }
+ul#gtrList, ul#repList { list-style: none; margin: 0; padding: 0; }
+.piece.rep { border-left-color: var(--c-reparation); }
+.piece .prob { color: var(--muted); font-size: .92rem; margin-top: 2px; overflow-wrap: anywhere; }
+.piece .late { color: var(--danger); font-weight: 500; }
+.badge.s-recue { border-color: var(--c-reparation); color: var(--c-reparation); }
+.badge.s-prete { border-color: var(--accent); color: var(--accent); }
+.linked .shortcuts { align-items: center; justify-content: space-between; margin-top: 4px; }
+.linked .docnote { padding: 2px 0; }
 .piece.gtr { border-left-color: var(--c-instrument); }
 .badge { display: inline-block; font-size: .75rem; font-weight: 500; border-radius: 999px; padding: 1px 8px; margin-left: 6px; border: 1px solid var(--line); color: var(--muted); vertical-align: 1px; }
 .badge.s-encours { border-color: var(--c-instrument); color: var(--c-instrument); }
@@ -184,6 +191,12 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
 .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; margin: 4px 0 6px; }
 .thumbs a { position: relative; display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--gone); }
 .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Ordinateur (souris) ou grand écran : les rangées de boutons passent à la ligne au lieu de défiler
+   (sans barre de défilement, les derniers choix — ex. Manche, Beam — étaient inaccessibles). */
+@media (hover: hover) and (pointer: fine), (min-width: 760px) {
+  .tabs, .views { flex-wrap: wrap; overflow-x: visible; }
+  .seg { flex-wrap: wrap; overflow-x: visible; border-radius: 18px; }
+}
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -202,6 +215,7 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
       <button type="button" data-m="inv">Inventaire</button>
       <button type="button" data-m="cli">Clients</button>
       <button type="button" data-m="gtr">Guitares</button>
+      <button type="button" data-m="rep">Réparations</button>
     </div>
     <nav class="tabs" id="tabs" aria-label="Catégories"></nav>
 
@@ -266,6 +280,15 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
       <ul id="gtrList"></ul>
     </section>
 
+    <section id="repView" hidden>
+      <div class="views" id="repStatus" aria-label="Statut"></div>
+      <div class="invbar">
+        <input type="search" id="repSearch" placeholder="Chercher : numéro, instrument, client, problème…" aria-label="Chercher une réparation">
+      </div>
+      <p class="invsum" id="repSum"></p>
+      <ul id="repList"></ul>
+    </section>
+
     <button class="btn primary" id="add" type="button">Ajouter</button>
   </div>
 
@@ -304,9 +327,11 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
           <option value="hebdomadaire">Hebdomadaire</option>
           <option value="mensuelle">Mensuelle</option>
         </select></div>
+    <div class="field" id="w-projet" hidden><label for="f-projet" id="f-projetLbl">Guitare</label>
+      <select id="f-projet"></select>
+      <span class="docnote" id="f-oldInst" hidden></span></div>
     <div class="field" id="w-client" hidden><label for="f-client">Client</label>
       <div class="selrow"><select id="f-client"></select><button class="btn small" type="button" id="f-newClient">Nouveau client</button></div></div>
-    <div class="field" id="w-instrument" hidden><label for="f-instrument">Guitare</label><input id="f-instrument"></div>
     <div class="row2" id="w-cout">
       <div class="field"><label for="f-cout">Coût ($)</label><input id="f-cout" type="number" step="0.01" inputmode="decimal"></div>
       <div class="field"><label for="f-fact">Lien de la facture</label><input id="f-fact" type="url" inputmode="url" placeholder="https://"></div>
@@ -372,11 +397,45 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
       <input id="g-files" type="file" accept="image/*,application/pdf" multiple>
       <span class="docnote">Les fichiers vont dans Drive : Guitares / <span id="g-folderName">…</span>. <a id="gtrFolderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
     </div>
+    <div class="field linked" id="gTasksWrap" hidden><label>Tâches To Do de cette guitare</label><div class="dtasks" id="gTasks"></div></div>
     <div class="field"><label for="g-notes">Notes</label><textarea id="g-notes" rows="3"></textarea></div>
     <div class="actions">
       <button class="btn danger left" type="button" id="gtrDel" hidden>Supprimer</button>
       <button class="btn" type="button" id="gtrCancel">Annuler</button>
       <button class="btn primary" type="submit" id="gtrSave">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgRep">
+  <form id="formRep">
+    <h2 id="repTitle">Nouvelle réparation</h2>
+    <div class="field"><label for="r-inst">Instrument</label><input id="r-inst" required autocomplete="off" placeholder="ex. Gibson J-45 1968"></div>
+    <div class="field"><label for="r-client">Client</label>
+      <div class="selrow"><select id="r-client"></select><button class="btn small" type="button" id="r-newClient">Nouveau client</button></div></div>
+    <div class="field"><label for="r-prob">Travail demandé / problème</label><textarea id="r-prob" rows="3"></textarea></div>
+    <div class="row2">
+      <div class="field"><label for="r-statut">Statut</label>
+        <select id="r-statut"><option value="recue">Reçue</option><option value="encours">En cours</option><option value="prete">Prête</option><option value="livree">Livrée</option></select></div>
+      <div class="field"><label for="r-prix">Prix estimé ($)</label><input id="r-prix" type="number" step="0.01" min="0" inputmode="decimal"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="r-recu">Reçue le</label><input id="r-recu" type="date"></div>
+      <div class="field"><label for="r-promise">Promise pour</label><input id="r-promise" type="date"></div>
+    </div>
+    <div class="field linked" id="rTasksWrap" hidden><label>Tâches To Do de cette réparation</label><div class="dtasks" id="rTasks"></div></div>
+    <div class="field">
+      <label for="r-files">Photos et documents</label>
+      <div class="thumbs" id="rThumbs"></div>
+      <ul class="doclist" id="rDocList"></ul>
+      <input id="r-files" type="file" accept="image/*,application/pdf" multiple>
+      <span class="docnote">Les fichiers vont dans Drive : Réparations / <span id="r-folderName">…</span>. <a id="repFolderLink" target="_blank" rel="noopener noreferrer" hidden>Ouvrir le dossier</a></span>
+    </div>
+    <div class="field"><label for="r-notes">Notes</label><textarea id="r-notes" rows="2"></textarea></div>
+    <div class="actions">
+      <button class="btn danger left" type="button" id="repDel" hidden>Supprimer</button>
+      <button class="btn" type="button" id="repCancel">Annuler</button>
+      <button class="btn primary" type="submit" id="repSave">Enregistrer</button>
     </div>
   </form>
 </dialog>
@@ -458,7 +517,7 @@ const SCOPES = [
 const SPREADSHEET_NAME = 'App Tâches';
 const SHEET_TITLE = 'Tâches';
 const FOLDER_NAME = 'Factures + Documents';
-const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client','debut','duree','duree_unite'];
+const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client','debut','duree','duree_unite','projet'];
 const CLIENT_TYPES = ['reparation', 'instrument']; // catégories où l’on choisit un client
 const TYPES = { globale: 'Admin', instrument: 'Guitares', reparation: 'Réparations', perso: 'Perso' }; // ordre des onglets
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -480,6 +539,12 @@ const GTR_SHEET = 'Guitares';
 const GTR_FOLDER = 'Guitares';
 const GTR_HEADERS = ['numero','nom','modele','client','statut','date_debut','date_fin','pieces','heures','notes','photos','dossier_id','date_ajout'];
 const GTR_STATUS = { encours: 'En cours', terminee: 'Terminée', livree: 'Livrée' };
+// Réparations
+const REP_SHEET = 'Réparations';
+const REP_FOLDER = 'Réparations';
+const REP_HEADERS = ['numero','instrument','client','statut','probleme','date_reception','date_promise','prix','notes','photos','dossier_id','date_ajout'];
+const REP_STATUS = { recue: 'Reçue', encours: 'En cours', prete: 'Prête', livree: 'Livrée' };
+const PROJ_TYPES = ['instrument', 'reparation']; // catégories liées à une guitare (G…) ou une réparation (R…)
 const WOODS = ['Ébène', 'Palissandre', 'Wengé', 'Cèdre rouge', 'Épinette', 'Érable', 'Acajou', 'Noyer', 'Koa', 'Cerisier'];
 
 /* ============ État ============ */
@@ -488,12 +553,14 @@ let sheetId = localStorage.getItem('sheetId') || '';
 let folderId = localStorage.getItem('folderId') || '';
 const gids = {};
 let tasks = [], cat = 'all', view = 'all', showDone = false;
-let mode = ['cal', 'inv', 'cli', 'gtr'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
+let mode = ['cal', 'inv', 'cli', 'gtr', 'rep'].includes(localStorage.getItem('mode')) ? localStorage.getItem('mode') : 'list';
 let clients = [], cliQuery = '', cliEditing = null, cliDocs = [], cliPending = [];
 let cliReturn = null; // liste déroulante à remplir après « Nouveau client » (tâche ou guitare)
 let guitars = [], gtrFilter = 'all', gtrQuery = '';
 let gtrEditing = null, gPieces = [], gHours = [], gDocs = [], gPending = [];
 let guitarsRoot = localStorage.getItem('guitarsFolder') || '';
+let repairs = [], repFilter = 'all', repQuery = '', repEditing = null, rDocs = [], rPending = [];
+let repairsRoot = localStorage.getItem('repairsFolder') || '';
 const blobUrls = {};
 let clientsRoot = localStorage.getItem('clientsFolder') || '';
 let inv = [], invType = 'all', invQuery = '', showUsed = false;
@@ -529,6 +596,7 @@ const LAST_COL = colLetter(HEADERS.length - 1);
 const INV_LAST = colLetter(INV_HEADERS.length - 1);
 const CLI_LAST = colLetter(CLI_HEADERS.length - 1);
 const GTR_LAST = colLetter(GTR_HEADERS.length - 1);
+const REP_LAST = colLetter(REP_HEADERS.length - 1);
 const rangeIn = (title, r) => encodeURIComponent(`'${title}'!${r}`);
 const range = r => rangeIn(SHEET_TITLE, r);
 const money = v => Number(v).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' });
@@ -574,9 +642,10 @@ async function connect() {
     await ensureTab(INV_SHEET, INV_HEADERS);
     await ensureTab(CLI_SHEET, CLI_HEADERS);
     await ensureTab(GTR_SHEET, GTR_HEADERS);
+    await ensureTab(REP_SHEET, REP_HEADERS);
     $('#signedOut').hidden = true; $('#app').hidden = false;
     $('#auth').textContent = 'Déconnexion';
-    await Promise.all([loadClients(), loadInv(), loadGuitars()]);
+    await Promise.all([loadClients(), loadInv(), loadGuitars(), loadRepairs()]);
     await load();
     ensureGuitarsRoot().catch(fail); // crée le dossier Guitares/ la première fois
     ensureInvFolders().catch(fail); // crée Inventaire/ et ses sous-dossiers la première fois
@@ -812,7 +881,7 @@ function eventBody(o) {
   const docs = parseDocs(o.documents).map(d => d.url);
   const body = {
     summary: `[${TYPES[o.type]}] ${o.titre}`,
-    description: [clientLine(o.client), o.debut ? 'Début : ' + fmtDate(o.debut) : '', o.duree ? 'Durée planifiée : ' + fmtDuree(o.duree, o.duree_unite) : '', o.description, o.lien, ...docs].filter(Boolean).join('\n'),
+    description: [projetLabel(o), clientLine(o.client), o.debut ? 'Début : ' + fmtDate(o.debut) : '', o.duree ? 'Durée planifiée : ' + fmtDuree(o.duree, o.duree_unite) : '', o.description, o.lien, ...docs].filter(Boolean).join('\n'),
     start: { date: o.echeance },
     end: { date: addDays(o.echeance, 1) }
   };
@@ -864,7 +933,17 @@ function buildNav() {
   $('#invView').hidden = mode !== 'inv';
   $('#cliView').hidden = mode !== 'cli';
   $('#gtrView').hidden = mode !== 'gtr';
-  $('#tabs').hidden = ['inv', 'cli', 'gtr'].includes(mode);
+  $('#repView').hidden = mode !== 'rep';
+  $('#tabs').hidden = ['inv', 'cli', 'gtr', 'rep'].includes(mode);
+
+  const rs = $('#repStatus'); rs.textContent = '';
+  [['all', 'Toutes'], ['actives', 'Actives'], ...Object.entries(REP_STATUS)].forEach(([k, label]) => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(repFilter === k));
+    b.onclick = () => { repFilter = k; buildNav(); renderRepairs(); };
+    rs.appendChild(b);
+  });
 
   const gs = $('#gtrStatus'); gs.textContent = '';
   [['all', 'Toutes'], ...Object.entries(GTR_STATUS)].forEach(([k, label]) => {
@@ -896,6 +975,7 @@ function render() {
   if (mode === 'inv') { renderInv(); return; }
   if (mode === 'cli') { renderClients(); return; }
   if (mode === 'gtr') { renderGuitars(); return; }
+  if (mode === 'rep') { renderRepairs(); return; }
   const list = $('#list'); list.textContent = '';
   const today = ymd(new Date());
   const items = tasks.filter(t => {
@@ -936,7 +1016,7 @@ function render() {
     if (t.duree) add('⏱ ' + fmtDuree(t.duree, t.duree_unite));
     if (t.recurrence) add('↻ ' + t.recurrence);
     if (t.client) add('Client : ' + clientName(t.client));
-    if (t.instrument) add(t.instrument);
+    const pl = projetLabel(t); if (pl) add(pl);
     if (t.cout) add(Number(t.cout).toLocaleString('fr-CA', { style: 'currency', currency: 'CAD' }));
     if (safeUrl(t.lien)) meta.appendChild(link(t.lien, 'Lien'));
     if (safeUrl(t.lien_facture)) meta.appendChild(link(t.lien_facture, 'Facture'));
@@ -1535,10 +1615,17 @@ function openClient(c = null) {
       b.onclick = () => { $('#dlgCli').close(); openGuitar(g); };
       wrap.appendChild(b);
     });
+    repairs.filter(r => r.client === c.numero).forEach(r => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'dtask t-reparation';
+      b.textContent = `Réparation ${r.numero} · ${r.instrument} · ${REP_STATUS[r.statut] || ''}`;
+      b.onclick = () => { $('#dlgCli').close(); openRepair(r); };
+      wrap.appendChild(b);
+    });
     const sc = document.createElement('div'); sc.className = 'shortcuts';
-    [['reparation', '+ Réparation'], ['instrument', '+ Guitare']].forEach(([type, label]) => {
+    [['+ Réparation', () => openRepair(null, c.numero)], ['+ Guitare', () => openGuitar(null, c.numero)]].forEach(([label, fn]) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn small'; b.textContent = label;
-      b.onclick = () => { $('#dlgCli').close(); openFormFor(type, c.numero); };
+      b.onclick = () => { $('#dlgCli').close(); fn(); };
       sc.appendChild(b);
     });
     wrap.appendChild(sc);
@@ -1756,6 +1843,7 @@ function renderGuitars() {
     }
     if (g.date_debut) add('Début ' + fmtDate(g.date_debut));
     if (g.date_fin) add('Fin ' + fmtDate(g.date_fin));
+    const tc = taskCount(g.numero); if (tc) add(tc);
     const ph = parseDocs(g.photos).filter(isImage).length; if (ph) add(`${ph} photo${ph > 1 ? 's' : ''}`);
     body.appendChild(meta);
 
@@ -1859,13 +1947,15 @@ function renderGDocs() {
   });
 }
 
-function openGuitar(g = null) {
+function openGuitar(g = null, client = '') {
   gtrEditing = g;
   $('#formGtr').reset();
   $('#gtrTitle').textContent = g ? `Guitare ${g.numero}` : `Nouvelle guitare (${nextGuitarNumber()})`;
   $('#gtrDel').hidden = !g;
   fillDatalist('#dl-modele', ['Dreadnought', 'OM', 'Parlor', 'Jumbo', 'Classique', 'Électrique', ...guitars.map(x => x.modele)]);
-  fillClientSelect(g ? g.client : '', '#g-client');
+  fillClientSelect(g ? g.client : client, '#g-client');
+  $('#gTasksWrap').hidden = !g;
+  if (g) renderLinkedTasks('#gTasks', g.numero, 'instrument', '#g-client');
   if (g) {
     $('#g-nom').value = g.nom; $('#g-modele').value = g.modele; $('#g-statut').value = g.statut || 'encours';
     $('#g-debut').value = g.date_debut; $('#g-fin').value = g.date_fin; $('#g-notes').value = g.notes;
@@ -1916,6 +2006,9 @@ $('#formGtr').onsubmit = async ev => {
   ev.preventDefault();
   // Heures tapées mais pas encore ajoutées : on les garde
   if (Number($('#gh-h').value) > 0) $('#gh-add').click();
+  if ($('#g-debut').value && $('#g-fin').value && $('#g-fin').value < $('#g-debut').value) {
+    alert('La date de fin doit être le même jour ou après la date de début.'); $('#g-fin').focus(); return;
+  }
   $('#gtrSave').disabled = true; say();
   try {
     const before = gtrEditing ? piecesOf(gtrEditing) : [];
@@ -1958,10 +2051,250 @@ $('#formGtr').onsubmit = async ev => {
   $('#gtrSave').disabled = false;
 };
 
+/* ============ Liens tâches ↔ guitares / réparations ============ */
+const findGuitar = n => guitars.find(g => g.numero === n);
+const findRepair = n => repairs.find(r => r.numero === n);
+// Texte qui décrit la guitare ou la réparation d’une tâche (ou l’ancien texte libre).
+function projetLabel(t) {
+  if (!t.projet) return t.instrument || '';
+  if (/^R\d/.test(t.projet)) { const r = findRepair(t.projet); return r ? `Réparation ${r.numero} · ${r.instrument}` : `Réparation ${t.projet} (supprimée)`; }
+  const g = findGuitar(t.projet); return g ? `Guitare ${g.numero} · ${g.nom}` : `Guitare ${t.projet} (supprimée)`;
+}
+function taskCount(numero) {
+  const l = tasks.filter(t => t.projet === numero);
+  if (!l.length) return '';
+  const open = l.filter(t => t.fait !== 'oui').length;
+  return open ? `${open} tâche${open > 1 ? 's' : ''} à faire` : `${l.length} tâche${l.length > 1 ? 's' : ''} terminée${l.length > 1 ? 's' : ''}`;
+}
+// Liste des tâches liées dans une fiche (guitare ou réparation), avec « + Tâche ».
+function renderLinkedTasks(boxSel, numero, type, clientSel) {
+  const wrap = $(boxSel); wrap.textContent = '';
+  const l = tasks.filter(t => t.projet === numero)
+    .sort((a, b) => (a.fait === 'oui') - (b.fait === 'oui') || (isYmd(a.echeance) ? a.echeance : '9999').localeCompare(isYmd(b.echeance) ? b.echeance : '9999'));
+  if (!l.length) { const n = document.createElement('div'); n.className = 'docnote'; n.textContent = 'Aucune tâche pour l’instant.'; wrap.appendChild(n); }
+  const today = ymd(new Date());
+  l.forEach(t => {
+    const b = document.createElement('button'); b.type = 'button';
+    b.className = `dtask t-${t.type}`;
+    const late = t.fait !== 'oui' && isYmd(t.echeance) && t.echeance < today;
+    b.textContent = `${t.fait === 'oui' ? '✓ ' : late ? '⚠ ' : ''}${t.titre}${t.echeance ? ' · ' + fmtDate(t.echeance) : ''}${t.duree ? ' · ' + fmtDuree(t.duree, t.duree_unite) : ''}`;
+    b.onclick = () => openForm(t); // s’ouvre par-dessus la fiche, qui reste ouverte
+    wrap.appendChild(b);
+  });
+  const sc = document.createElement('div'); sc.className = 'shortcuts';
+  const s = document.createElement('span'); s.className = 'docnote';
+  const done = l.filter(t => t.fait === 'oui').length;
+  s.textContent = l.length ? `${done} / ${l.length} terminée${done > 1 ? 's' : ''}` : '';
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'btn small'; add.textContent = '+ Tâche';
+  add.onclick = () => openFormFor(type, $(clientSel).value, numero);
+  sc.append(s, add); wrap.appendChild(sc);
+}
+// Après l’ajout / la modification d’une tâche : met à jour la fiche ouverte en dessous.
+function refreshLinked() {
+  if ($('#dlgGtr').open && gtrEditing) renderLinkedTasks('#gTasks', gtrEditing.numero, 'instrument', '#g-client');
+  if ($('#dlgRep').open && repEditing) renderLinkedTasks('#rTasks', repEditing.numero, 'reparation', '#r-client');
+}
+
+/* ============ Réparations : données (onglet « Réparations ») ============ */
+async function loadRepairs() {
+  const d = await api(`${SHEETS}/${sheetId}/values/${rangeIn(REP_SHEET, `A2:${REP_LAST}`)}`);
+  repairs = (d.values || []).map(row => {
+    const o = {};
+    REP_HEADERS.forEach((h, j) => { o[h] = row[j] || ''; });
+    return o;
+  }).filter(r => r.numero);
+  if (mode === 'rep') renderRepairs();
+}
+
+function nextRepairNumber() {
+  const max = repairs.reduce((m, r) => { const x = /^R(\d+)$/.exec(r.numero); return x ? Math.max(m, Number(x[1])) : m; }, 0);
+  return 'R' + String(max + 1).padStart(3, '0');
+}
+
+const repRow = r => REP_HEADERS.map(h => r[h] ?? '');
+
+async function addRepair(r) {
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(REP_SHEET, `A:${REP_LAST}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
+    method: 'POST', body: JSON.stringify({ values: [repRow(r)] })
+  });
+}
+
+async function updateRepair(r) {
+  const n = await findRow(r.numero, REP_SHEET);
+  await api(`${SHEETS}/${sheetId}/values/${rangeIn(REP_SHEET, `A${n}:${REP_LAST}${n}`)}?valueInputOption=RAW`, {
+    method: 'PUT', body: JSON.stringify({ values: [repRow(r)] })
+  });
+}
+
+async function ensureRepairsRoot() {
+  if (!repairsRoot) {
+    repairsRoot = await driveFolder(REP_FOLDER);
+    localStorage.setItem('repairsFolder', repairsRoot);
+  }
+  return repairsRoot;
+}
+
+// Un sous-dossier par réparation, créé au premier fichier : « R001 - Instrument »
+async function ensureRepairFolder(r) {
+  if (!r.dossier_id) r.dossier_id = await driveFolder(`${r.numero} - ${r.instrument}`, await ensureRepairsRoot());
+  return r.dossier_id;
+}
+
+/* ============ Réparations : affichage ============ */
+function renderRepairs() {
+  const list = $('#repList'); list.textContent = '';
+  const q = repQuery.trim().toLowerCase();
+  const today = ymd(new Date());
+  const items = repairs.filter(r => {
+    if (repFilter === 'actives' && r.statut === 'livree') return false;
+    if (!['all', 'actives'].includes(repFilter) && r.statut !== repFilter) return false;
+    if (!q) return true;
+    return [r.numero, r.instrument, r.probleme, r.notes, r.client ? clientName(r.client) : ''].join(' ').toLowerCase().includes(q);
+  }).sort((a, b) => b.numero.localeCompare(a.numero, 'fr', { numeric: true }));
+
+  const actives = repairs.filter(r => r.statut !== 'livree').length;
+  const sum = $('#repSum'); sum.textContent = '';
+  const s1 = document.createElement('strong'); s1.textContent = String(repairs.length);
+  const s2 = document.createElement('strong'); s2.textContent = String(actives);
+  sum.append(s1, repairs.length > 1 ? ' réparations · ' : ' réparation · ', s2, actives > 1 ? ' actives' : ' active');
+
+  if (!items.length) {
+    const li = document.createElement('li'); li.className = 'empty';
+    li.innerHTML = repairs.length ? '<p>Aucune réparation ne correspond.</p>' : '<p>Aucune réparation. Touche « Ajouter » pour en inscrire une.</p>';
+    list.appendChild(li); return;
+  }
+
+  items.forEach(r => {
+    const li = document.createElement('li'); li.className = 'piece rep';
+    const body = document.createElement('div'); body.className = 'body';
+    body.onclick = () => openRepair(r);
+    const head = document.createElement('div');
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = r.numero;
+    const nm = document.createElement('span'); nm.className = 'kind'; nm.textContent = r.instrument;
+    const bd = document.createElement('span'); bd.className = 'badge s-' + r.statut; bd.textContent = REP_STATUS[r.statut] || r.statut;
+    head.append(num, nm, bd); body.appendChild(head);
+    if (r.client) { const w = document.createElement('div'); w.className = 'wood'; w.textContent = clientName(r.client); body.appendChild(w); }
+    if (r.probleme) { const p = document.createElement('div'); p.className = 'prob'; p.textContent = r.probleme; body.appendChild(p); }
+
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const add = txt => { const s = document.createElement('span'); s.textContent = txt; meta.appendChild(s); return s; };
+    if (r.date_reception) add('Reçue ' + fmtDate(r.date_reception));
+    if (r.date_promise) {
+      const s = add('Promise ' + fmtDate(r.date_promise));
+      if (['recue', 'encours'].includes(r.statut) && r.date_promise < today) { s.className = 'late'; s.textContent += ' · en retard'; }
+    }
+    if (r.prix) add(money(r.prix));
+    const tc = taskCount(r.numero); if (tc) add(tc);
+    const ph = parseDocs(r.photos).filter(isImage).length; if (ph) add(`${ph} photo${ph > 1 ? 's' : ''}`);
+    body.appendChild(meta);
+
+    const edit = document.createElement('button');
+    edit.type = 'button'; edit.className = 'btn small'; edit.textContent = 'Modifier';
+    edit.setAttribute('aria-label', 'Modifier ' + r.numero);
+    edit.onclick = () => openRepair(r);
+    li.append(body, edit); list.appendChild(li);
+  });
+}
+
+/* ============ Réparations : fiche ============ */
+function renderRDocs() {
+  const th = $('#rThumbs'); th.textContent = '';
+  const ul = $('#rDocList'); ul.textContent = '';
+  const row = (content, onRemove) => {
+    const li = document.createElement('li');
+    const rm = document.createElement('button');
+    rm.type = 'button'; rm.className = 'btn small'; rm.textContent = 'Retirer'; rm.onclick = onRemove;
+    li.append(content, rm); ul.appendChild(li);
+  };
+  rDocs.forEach((d, i) => {
+    if (isImage(d)) {
+      const a = link(d.url, ''); a.setAttribute('aria-label', d.name || 'Photo');
+      const img = document.createElement('img'); img.alt = d.name || 'Photo'; img.loading = 'lazy';
+      a.appendChild(img); th.appendChild(a);
+      driveBlobUrl(d.id).then(u => { img.src = u; }).catch(() => { img.remove(); a.textContent = d.name; });
+    }
+    row(link(d.url, d.name || 'Document'), () => { rDocs.splice(i, 1); renderRDocs(); });
+  });
+  rPending.forEach((f, i) => {
+    const s = document.createElement('span'); s.className = 'pending'; s.textContent = f.name + ' (à téléverser)';
+    row(s, () => { rPending.splice(i, 1); renderRDocs(); });
+  });
+}
+
+function openRepair(r = null, client = '') {
+  repEditing = r;
+  $('#formRep').reset();
+  $('#repTitle').textContent = r ? `Réparation ${r.numero}` : `Nouvelle réparation (${nextRepairNumber()})`;
+  $('#repDel').hidden = !r;
+  fillClientSelect(r ? r.client : client, '#r-client');
+  if (r) {
+    $('#r-inst').value = r.instrument; $('#r-prob').value = r.probleme; $('#r-statut').value = REP_STATUS[r.statut] ? r.statut : 'recue';
+    $('#r-prix').value = r.prix; $('#r-recu').value = r.date_reception; $('#r-promise').value = r.date_promise; $('#r-notes').value = r.notes;
+  } else {
+    $('#r-recu').value = ymd(new Date()); $('#r-statut').value = 'recue';
+  }
+  $('#rTasksWrap').hidden = !r;
+  if (r) renderLinkedTasks('#rTasks', r.numero, 'reparation', '#r-client');
+  rDocs = parseDocs(r && r.photos); rPending = [];
+  $('#r-folderName').textContent = r ? `${r.numero} - ${r.instrument}` : 'nouveau sous-dossier';
+  const fl = $('#repFolderLink');
+  fl.hidden = !(r && r.dossier_id);
+  if (r && r.dossier_id) fl.href = 'https://drive.google.com/drive/folders/' + r.dossier_id;
+  renderRDocs();
+  $('#dlgRep').showModal();
+}
+
+$('#r-files').onchange = e => { rPending.push(...e.target.files); e.target.value = ''; renderRDocs(); };
+$('#repCancel').onclick = () => $('#dlgRep').close();
+$('#repSearch').oninput = e => { repQuery = e.target.value; renderRepairs(); };
+
+$('#repDel').onclick = async () => {
+  const r = repEditing; if (!r) return;
+  if (!confirm(`Supprimer ${r.numero} · ${r.instrument} ?\nLes tâches liées restent dans To Do. Les photos restent dans Drive.`)) return;
+  $('#repDel').disabled = true; say();
+  try { await deleteRow(REP_SHEET, await findRow(r.numero, REP_SHEET)); $('#dlgRep').close(); await loadRepairs(); }
+  catch (e) { fail(e); }
+  $('#repDel').disabled = false;
+};
+
+$('#formRep').onsubmit = async ev => {
+  ev.preventDefault();
+  const rec = $('#r-recu').value, pro = $('#r-promise').value;
+  if (rec && pro && pro < rec) { alert('La date promise doit être le même jour ou après la date de réception.'); $('#r-promise').focus(); return; }
+  $('#repSave').disabled = true; say();
+  try {
+    const r = {
+      ...(repEditing || {}),
+      instrument: $('#r-inst').value.trim(), client: $('#r-client').value,
+      statut: $('#r-statut').value, probleme: $('#r-prob').value.trim(),
+      date_reception: rec, date_promise: pro, prix: $('#r-prix').value, notes: $('#r-notes').value.trim()
+    };
+    if (!repEditing) {
+      await loadRepairs(); // relit la feuille pour éviter un doublon entre appareils
+      r.numero = nextRepairNumber(); r.date_ajout = ymd(new Date()); r.dossier_id = '';
+    }
+    if (rPending.length) {
+      const parent = await ensureRepairFolder(r);
+      for (let i = 0; i < rPending.length; i++) {
+        say(`Téléversement ${i + 1} / ${rPending.length}…`, true);
+        rDocs.push(await uploadDoc(rPending[i], `${r.numero} - ${r.instrument}`, parent));
+      }
+      rPending = []; renderRDocs(); say();
+    }
+    r.photos = rDocs.length ? JSON.stringify(rDocs) : '';
+    if (repEditing) await updateRepair(r); else await addRepair(r);
+    $('#dlgRep').close();
+    await loadRepairs();
+    if (!repEditing) say(`Réparation ${r.numero} créée. Ouvre-la pour lui ajouter des tâches.`, true);
+  } catch (e) { fail(e); }
+  $('#repSave').disabled = false;
+};
+
 /* ============ Formulaire ============ */
 function syncFormFields() {
   const type = $('#f-type').value;
-  $('#w-instrument').hidden = type !== 'instrument';
+  $('#w-projet').hidden = !PROJ_TYPES.includes(type);
+  if (PROJ_TYPES.includes(type)) fillProjetSelect(type, $('#f-projet').value);
   $('#w-cout').hidden = type === 'perso';
   $('#w-client').hidden = !CLIENT_TYPES.includes(type);
 }
@@ -2004,12 +2337,16 @@ function openForm(t = null) {
     $('#f-date').value = isYmd(t.echeance) ? t.echeance : ''; $('#f-rec').value = t.recurrence;
     $('#f-debut').value = isYmd(t.debut) ? t.debut : ''; $('#f-duree').value = t.duree;
     $('#f-unite').value = UNITES[t.duree_unite] ? t.duree_unite : 'jours';
-    $('#f-instrument').value = t.instrument; $('#f-cout').value = t.cout; $('#f-fact').value = t.lien_facture;
+    $('#f-cout').value = t.cout; $('#f-fact').value = t.lien_facture;
     $('#f-cal').checked = !!t.event_id;
   } else {
     $('#f-cal').checked = true;
   }
   fillClientSelect(t ? t.client : '');
+  fillProjetSelect(t ? t.type : 'instrument', t ? t.projet : '');
+  const oi = $('#f-oldInst');
+  oi.hidden = !(t && t.instrument && !t.projet);
+  oi.textContent = t && t.instrument ? `Texte d’une ancienne version : « ${t.instrument} ». Choisis la guitare dans la liste.` : '';
   formDocs = parseDocs(t && t.documents);
   pendingFiles = [];
   syncFormFields(); renderDocList(); dateHint();
@@ -2017,10 +2354,31 @@ function openForm(t = null) {
 }
 
 // Ouvre la tâche avec une catégorie et un client déjà choisis (depuis la fiche client).
-function openFormFor(type, client) {
+function openFormFor(type, client = '', projet = '') {
   openForm();
-  $('#f-type').value = type; fillClientSelect(client); syncFormFields();
+  $('#f-type').value = type; fillClientSelect(client); fillProjetSelect(type, projet); syncFormFields();
 }
+
+// Liste des guitares (G…) ou des réparations (R…) pour lier une tâche. Les livrées sont cachées sauf si déjà choisies.
+function fillProjetSelect(type, selected = '') {
+  const isRep = type === 'reparation';
+  $('#f-projetLbl').textContent = isRep ? 'Réparation' : 'Guitare';
+  const sel = $('#f-projet'); sel.textContent = '';
+  sel.add(new Option('— Aucune —', ''));
+  const src = isRep ? repairs : guitars;
+  [...src].filter(x => x.statut !== 'livree' || x.numero === selected)
+    .sort((a, b) => b.numero.localeCompare(a.numero, 'fr', { numeric: true }))
+    .forEach(x => sel.add(new Option([x.numero, isRep ? x.instrument : x.nom, x.client ? clientName(x.client) : ''].filter(Boolean).join(' · '), x.numero)));
+  if (selected && ![...sel.options].some(o => o.value === selected) && (isRep ? /^R\d/ : /^G\d/).test(selected)) sel.add(new Option(selected + ' (supprimée)', selected));
+  sel.value = selected;
+  if (sel.value !== selected) sel.value = '';
+}
+
+// Choisir une guitare / réparation remplit le client s’il est vide.
+$('#f-projet').onchange = () => {
+  const n = $('#f-projet').value, x = findGuitar(n) || findRepair(n);
+  if (x && x.client && !$('#f-client').value) fillClientSelect(x.client);
+};
 
 $('#f-type').onchange = syncFormFields;
 
@@ -2059,7 +2417,8 @@ function checkDates(o) {
   return '';
 }
 $('#f-files').onchange = e => { pendingFiles.push(...e.target.files); e.target.value = ''; renderDocList(); };
-$('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : mode === 'gtr' ? openGuitar() : openForm());
+$('#add').onclick = () => (mode === 'inv' ? openInv() : mode === 'cli' ? openClient() : mode === 'gtr' ? openGuitar() : mode === 'rep' ? openRepair() : openForm());
+$('#r-newClient').onclick = () => { cliReturn = '#r-client'; openClient(); };
 $('#f-newClient').onclick = () => { cliReturn = '#f-client'; openClient(); };
 $('#g-newClient').onclick = () => { cliReturn = '#g-client'; openClient(); };
 $('#cancel').onclick = () => $('#dlg').close();
@@ -2067,7 +2426,7 @@ $('#cancel').onclick = () => $('#dlg').close();
 $('#del').onclick = async () => {
   if (!editing || !confirm(`Supprimer « ${editing.titre} » ?\nL’événement Agenda sera aussi supprimé. Les documents restent dans Drive.`)) return;
   $('#del').disabled = true; say();
-  try { await deleteTask(editing); $('#dlg').close(); await load(); }
+  try { await deleteTask(editing); $('#dlg').close(); await load(); refreshLinked(); }
   catch (e) { fail(e); }
   $('#del').disabled = false;
 };
@@ -2084,7 +2443,8 @@ $('#form').onsubmit = async ev => {
     recurrence: $('#f-rec').value,
     cout: type === 'perso' ? '' : $('#f-cout').value,
     lien_facture: type === 'perso' ? '' : $('#f-fact').value.trim(),
-    instrument: type === 'instrument' ? $('#f-instrument').value.trim() : '',
+    instrument: type === 'instrument' && editing ? editing.instrument : '', // ancien texte libre, conservé
+    projet: PROJ_TYPES.includes(type) ? $('#f-projet').value : '',
     client: CLIENT_TYPES.includes(type) ? $('#f-client').value : '',
     fait: editing ? editing.fait : '', event_id: editing ? editing.event_id : '', documents: ''
   };
@@ -2105,6 +2465,7 @@ $('#form').onsubmit = async ev => {
     if (editing) await updateTask(o); else await addTask(o);
     $('#dlg').close();
     await load();
+    refreshLinked();
   } catch (e) { fail(e); }
   $('#save').disabled = false;
 };
