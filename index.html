@@ -280,7 +280,7 @@ ul#gtrList { list-style: none; margin: 0; padding: 0; }
     <h2 id="dlgTitle">Nouvelle tâche</h2>
     <div class="field"><label for="f-type">Catégorie</label>
       <select id="f-type">
-        <option value="globale">Globales</option>
+        <option value="globale">Admin</option>
         <option value="instrument">Guitares</option>
         <option value="reparation">Réparations</option>
         <option value="perso">Perso</option>
@@ -460,7 +460,7 @@ const SHEET_TITLE = 'Tâches';
 const FOLDER_NAME = 'Factures + Documents';
 const HEADERS = ['id','type','titre','description','lien','echeance','recurrence','cout','lien_facture','instrument','fait','event_id','documents','client','debut','duree','duree_unite'];
 const CLIENT_TYPES = ['reparation', 'instrument']; // catégories où l’on choisit un client
-const TYPES = { globale: 'Globales', instrument: 'Guitares', reparation: 'Réparations', perso: 'Perso' }; // ordre des onglets
+const TYPES = { globale: 'Admin', instrument: 'Guitares', reparation: 'Réparations', perso: 'Perso' }; // ordre des onglets
 const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_UP = 'https://www.googleapis.com/upload/drive/v3/files';
@@ -1077,14 +1077,22 @@ async function renderCalendar() {
       box.appendChild(ul);
     }
 
-    // Tâches à échéance ce jour-là
-    const due = tasks.filter(t => t.echeance === ds && t.fait !== 'oui' && (cat === 'all' || t.type === cat));
-    weekTasks += due.length;
+    // Tâches de la journée : du début jusqu’à l’échéance (ou seulement le jour d’échéance)
+    const due = tasks.filter(t => {
+      if (t.fait === 'oui' || !(cat === 'all' || t.type === cat)) return false;
+      const deb = isYmd(t.debut) ? t.debut : '', ech = isYmd(t.echeance) ? t.echeance : '';
+      if (!deb && !ech) return false;
+      const a = deb || ech, b = ech && ech >= a ? ech : a;
+      return ds >= a && ds <= b;
+    });
+    weekTasks += due.filter(t => t.echeance === ds).length;
     if (due.length) {
       const wrap = document.createElement('div'); wrap.className = 'dtasks';
       due.forEach(t => {
         const b = document.createElement('button'); b.type = 'button';
-        b.className = `dtask t-${t.type}`; b.textContent = t.titre;
+        const multi = isYmd(t.debut) && isYmd(t.echeance) && t.debut < t.echeance;
+        const tag = !multi ? '' : ds === t.debut ? ' · début' : ds === t.echeance ? ' · échéance' : ' · en cours';
+        b.className = `dtask t-${t.type}`; b.textContent = t.titre + tag;
         b.onclick = () => openForm(t);
         wrap.appendChild(b);
       });
@@ -1662,6 +1670,36 @@ async function ensureGuitarFolder(g) {
   return g.dossier_id;
 }
 
+// Identifiant Drive d’un lien (…/d/ID/… ou ?id=ID), sinon ''.
+const driveIdOf = url => { const m = /\/d\/([\w-]{20,})|[?&]id=([\w-]{20,})/.exec(url || ''); return m ? (m[1] || m[2]) : ''; };
+
+// Copie les factures et documents des pièces d’inventaire dans le dossier de la guitare.
+// Une copie déjà présente (même nom) n’est pas refaite. Retourne { faits, echecs }.
+async function copyPieceFiles(g, nums) {
+  const res = { faits: 0, echecs: 0 };
+  const files = [];
+  nums.forEach(num => {
+    const p = findPiece(num); if (!p) return;
+    const pre = `Pièce ${p.numero}${p.bois ? ' - ' + p.bois : ''}`;
+    const id = driveIdOf(p.lien_facture);
+    if (id) files.push({ id, name: `${pre} - Facture` });
+    parseDocs(p.documents).forEach(d => { const fid = d.id || driveIdOf(d.url); if (fid) files.push({ id: fid, name: `${pre} - ${d.name || 'document'}` }); });
+  });
+  if (!files.length) return res;
+  const parent = await ensureGuitarFolder(g);
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    say(`Copie des fichiers des pièces ${i + 1} / ${files.length}…`, true);
+    try {
+      const name = f.name.slice(0, 200);
+      if (await findDrive(`name='${qEsc(name)}' and '${parent}' in parents and trashed=false`)) continue;
+      await api(`${DRIVE}/${encodeURIComponent(f.id)}/copy?fields=id`, { method: 'POST', body: JSON.stringify({ name, parents: [parent] }) });
+      res.faits++;
+    } catch (e) { console.warn('Copie impossible', f, e); res.echecs++; }
+  }
+  return res;
+}
+
 // Télécharge une image de Drive (avec le jeton) pour l’afficher en vignette.
 async function driveBlobUrl(id) {
   if (blobUrls[id]) return blobUrls[id];
@@ -1901,6 +1939,9 @@ $('#formGtr').onsubmit = async ev => {
       }
       gPending = []; renderGDocs(); say();
     }
+    // Copie des factures / documents des pièces dans le dossier de la guitare
+    let copie = { faits: 0, echecs: 0 };
+    try { copie = await copyPieceFiles(g, gPieces); } catch (e) { console.warn(e); copie.echecs++; }
     g.photos = gDocs.length ? JSON.stringify(gDocs) : '';
     if (gtrEditing) await updateGuitar(g); else await addGuitar(g);
     // Inventaire : pièces ajoutées → utilisées ; pièces retirées → de retour en stock
@@ -1908,7 +1949,11 @@ $('#formGtr').onsubmit = async ev => {
     await setPiecesUsed(before.filter(n => !gPieces.includes(n)), '');
     $('#dlgGtr').close();
     await Promise.all([loadGuitars(), loadInv()]);
-    if (!gtrEditing) say(`Guitare ${g.numero} créée.`, true);
+    const msg = [];
+    if (!gtrEditing) msg.push(`Guitare ${g.numero} créée.`);
+    if (copie.faits) msg.push(`${copie.faits} fichier${copie.faits > 1 ? 's' : ''} de pièces copié${copie.faits > 1 ? 's' : ''} dans le dossier ${g.numero}.`);
+    if (copie.echecs) msg.push(`${copie.echecs} fichier${copie.echecs > 1 ? 's' : ''} non copié${copie.echecs > 1 ? 's' : ''} (lien externe à l’app).`);
+    msg.length ? say(msg.join(' '), true) : say();
   } catch (e) { fail(e); }
   $('#gtrSave').disabled = false;
 };
